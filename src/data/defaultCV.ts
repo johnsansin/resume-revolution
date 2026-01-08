@@ -1,0 +1,87 @@
+import { CVData } from '@/types/cv';
+
+export const defaultCVData: CVData = {
+  personal: {
+    fullName: '',
+    email: '',
+    phone: '',
+    location: '',
+    website: '',
+    linkedin: '',
+    summary: '',
+    jobTitle: '',
+  },
+  experience: [],
+  education: [],
+  skills: [],
+  languages: [],
+  projects: [],
+};
+
+export const sampleCVData: CVData = {
+  personal: {
+    fullName: 'Sarah Johnson',
+    email: 'sarah.johnson@email.com',
+    phone: '+1 (555) 123-4567',
+    location: 'San Francisco, CA',
+    website: 'www.sarahjohnson.dev',
+    linkedin: 'linkedin.com/in/sarahjohnson',
+    summary: 'Passionate software engineer with 5+ years of experience building scalable web applications. Specialized in React, Node.js, and cloud technologies. Led teams to deliver products used by millions of users worldwide.',
+    jobTitle: 'Senior Software Engineer',
+  },
+  experience: [
+    {
+      id: '1',
+      company: 'TechCorp Inc.',
+      position: 'Senior Software Engineer',
+      startDate: '2021-03',
+      endDate: '',
+      current: true,
+      description: 'Lead a team of 5 engineers building microservices architecture. Reduced system latency by 40% through optimization. Mentored junior developers and conducted code reviews.',
+      location: 'San Francisco, CA',
+    },
+    {
+      id: '2',
+      company: 'StartupXYZ',
+      position: 'Full Stack Developer',
+      startDate: '2019-01',
+      endDate: '2021-02',
+      current: false,
+      description: 'Built and maintained React applications serving 100k+ daily users. Implemented CI/CD pipelines reducing deployment time by 60%.',
+      location: 'Remote',
+    },
+  ],
+  education: [
+    {
+      id: '1',
+      institution: 'University of California, Berkeley',
+      degree: 'Bachelor of Science',
+      field: 'Computer Science',
+      startDate: '2014-09',
+      endDate: '2018-05',
+      gpa: '3.8',
+      description: 'Magna Cum Laude, Dean\'s List',
+    },
+  ],
+  skills: [
+    { id: '1', name: 'React', level: 'expert' },
+    { id: '2', name: 'TypeScript', level: 'expert' },
+    { id: '3', name: 'Node.js', level: 'advanced' },
+    { id: '4', name: 'Python', level: 'advanced' },
+    { id: '5', name: 'AWS', level: 'intermediate' },
+    { id: '6', name: 'Docker', level: 'intermediate' },
+  ],
+  languages: [
+    { id: '1', name: 'English', proficiency: 'native' },
+    { id: '2', name: 'Spanish', proficiency: 'fluent' },
+  ],
+  projects: [
+    {
+      id: '1',
+      name: 'E-Commerce Platform',
+      description: 'Built a full-stack e-commerce platform with payment integration and real-time inventory management.',
+      url: 'github.com/sarah/ecommerce',
+      technologies: ['React', 'Node.js', 'PostgreSQL', 'Stripe'],
+    },
+  ],
+};
