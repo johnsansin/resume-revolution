@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useCVContext } from '@/contexts/CVContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, FileText, Briefcase, GraduationCap, Wrench, Languages, FolderKanban, Layout, RotateCcw, Sparkles } from 'lucide-react';
@@ -14,10 +15,14 @@ import LanguagesForm from './LanguagesForm';
 import ProjectsForm from './ProjectsForm';
 import TemplateSelector from './TemplateSelector';
 import CVPreview from './CVPreview';
+import UserMenu from './UserMenu';
+import SaveCVDialog from './SaveCVDialog';
+import MyCVsDialog from './MyCVsDialog';
 import { templates } from './templates/PDFTemplates';
 
 const CVBuilder: React.FC = () => {
   const { cvData, selectedTemplate, loadSampleData, clearAllData } = useCVContext();
+  const { user } = useAuth();
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
@@ -59,6 +64,12 @@ const CVBuilder: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-2">
+            {user && (
+              <>
+                <SaveCVDialog />
+                <MyCVsDialog />
+              </>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -85,6 +96,7 @@ const CVBuilder: React.FC = () => {
               <Download className="w-4 h-4 mr-2" />
               {isDownloading ? 'Generating...' : 'Download PDF'}
             </Button>
+            <UserMenu />
           </div>
         </div>
       </header>
