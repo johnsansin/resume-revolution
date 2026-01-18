@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { User, Mail, Phone, MapPin, Globe, Linkedin, FileText, Briefcase } from 'lucide-react';
+import PhotoUpload from './PhotoUpload';
 
 const PersonalInfoForm: React.FC = () => {
   const { cvData, updatePersonal } = useCVContext();
@@ -11,6 +12,7 @@ const PersonalInfoForm: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <PhotoUpload />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
           <Label htmlFor="fullName" className="flex items-center gap-2 text-foreground font-medium">

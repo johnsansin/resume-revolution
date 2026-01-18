@@ -26,6 +26,13 @@ const createPreview = (config: {
       return (
         <div className="flex min-h-full font-sans text-xs" style={{ backgroundColor: config.bgColor }}>
           <div className="w-1/3 p-5 text-white" style={{ backgroundColor: config.sidebarBg }}>
+            {data.personal.photo && (
+              <img 
+                src={data.personal.photo} 
+                alt="Profile" 
+                className="w-20 h-20 rounded-full object-cover mx-auto mb-3 border-2 border-white/30"
+              />
+            )}
             <h1 className="text-lg font-bold mb-1">{data.personal.fullName || 'Your Name'}</h1>
             <p className="text-xs mb-4 opacity-80">{data.personal.jobTitle || 'Professional Title'}</p>
             <div className="mb-4">
@@ -93,13 +100,22 @@ const createPreview = (config: {
     if (config.headerBg) {
       return (
         <div className="min-h-full font-sans text-xs" style={{ backgroundColor: config.bgColor, color: config.textColor }}>
-          <div className="p-6 text-white" style={{ backgroundColor: config.headerBg }}>
-            <h1 className="text-2xl font-bold mb-1">{data.personal.fullName || 'Your Name'}</h1>
-            <p className="opacity-80 mb-3">{data.personal.jobTitle || 'Professional Title'}</p>
-            <div className="flex gap-4 text-xs opacity-70">
-              {data.personal.email && <span>{data.personal.email}</span>}
-              {data.personal.phone && <span>{data.personal.phone}</span>}
-              {data.personal.location && <span>{data.personal.location}</span>}
+          <div className="p-6 text-white flex gap-4" style={{ backgroundColor: config.headerBg }}>
+            {data.personal.photo && (
+              <img 
+                src={data.personal.photo} 
+                alt="Profile" 
+                className="w-16 h-16 rounded-full object-cover border-2 border-white/30"
+              />
+            )}
+            <div>
+              <h1 className="text-2xl font-bold mb-1">{data.personal.fullName || 'Your Name'}</h1>
+              <p className="opacity-80 mb-3">{data.personal.jobTitle || 'Professional Title'}</p>
+              <div className="flex gap-4 text-xs opacity-70">
+                {data.personal.email && <span>{data.personal.email}</span>}
+                {data.personal.phone && <span>{data.personal.phone}</span>}
+                {data.personal.location && <span>{data.personal.location}</span>}
+              </div>
             </div>
           </div>
           <div className="p-6">
@@ -139,13 +155,23 @@ const createPreview = (config: {
 
     return (
       <div className="p-8 min-h-full font-sans text-xs" style={{ backgroundColor: config.bgColor, color: config.textColor }}>
-        <div className="mb-4 pb-4" style={{ borderBottom: `2px solid ${config.accentColor}` }}>
-          <h1 className="text-2xl font-bold mb-1" style={{ color: config.accentColor }}>{data.personal.fullName || 'Your Name'}</h1>
-          <p className="text-sm opacity-70 mb-2">{data.personal.jobTitle || 'Professional Title'}</p>
-          <div className="flex flex-wrap gap-4 text-xs opacity-60">
-            {data.personal.email && <span>{data.personal.email}</span>}
-            {data.personal.phone && <span>{data.personal.phone}</span>}
-            {data.personal.location && <span>{data.personal.location}</span>}
+        <div className="flex gap-4 mb-4 pb-4" style={{ borderBottom: `2px solid ${config.accentColor}` }}>
+          {data.personal.photo && (
+            <img 
+              src={data.personal.photo} 
+              alt="Profile" 
+              className="w-16 h-16 rounded-full object-cover border-2"
+              style={{ borderColor: config.accentColor }}
+            />
+          )}
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold mb-1" style={{ color: config.accentColor }}>{data.personal.fullName || 'Your Name'}</h1>
+            <p className="text-sm opacity-70 mb-2">{data.personal.jobTitle || 'Professional Title'}</p>
+            <div className="flex flex-wrap gap-4 text-xs opacity-60">
+              {data.personal.email && <span>{data.personal.email}</span>}
+              {data.personal.phone && <span>{data.personal.phone}</span>}
+              {data.personal.location && <span>{data.personal.location}</span>}
+            </div>
           </div>
         </div>
         {data.personal.summary && (

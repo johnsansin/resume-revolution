@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer';
 import { CVData } from '@/types/cv';
 
 // Register fonts
@@ -60,7 +60,8 @@ const createBaseTemplate = (config: {
 // === TEMPLATE 1: CLASSIC ===
 const classicStyles = StyleSheet.create({
   page: { padding: 40, fontFamily: 'Helvetica', fontSize: 10, color: '#333' },
-  header: { textAlign: 'center', marginBottom: 20, borderBottom: '2px solid #1a365d', paddingBottom: 15 },
+  header: { textAlign: 'center', marginBottom: 20, borderBottom: '2px solid #1a365d', paddingBottom: 15, alignItems: 'center' },
+  photo: { width: 60, height: 60, borderRadius: 30, marginBottom: 10, objectFit: 'cover' },
   name: { fontSize: 24, fontWeight: 'bold', color: '#1a365d', marginBottom: 5 },
   jobTitle: { fontSize: 14, color: '#4a5568', marginBottom: 8 },
   contact: { flexDirection: 'row', justifyContent: 'center', gap: 15, fontSize: 9, color: '#4a5568' },
@@ -90,6 +91,7 @@ export const ClassicTemplate: React.FC<{ data: CVData }> = ({ data }) => (
   <Document>
     <Page size="A4" style={classicStyles.page}>
       <View style={classicStyles.header}>
+        {data.personal.photo && <Image src={data.personal.photo} style={classicStyles.photo} />}
         <Text style={classicStyles.name}>{data.personal.fullName || 'Your Name'}</Text>
         <Text style={classicStyles.jobTitle}>{data.personal.jobTitle || 'Professional Title'}</Text>
         <View style={classicStyles.contact}>
@@ -180,6 +182,7 @@ const modernStyles = StyleSheet.create({
   page: { flexDirection: 'row', fontFamily: 'Helvetica', fontSize: 10 },
   sidebar: { width: '35%', backgroundColor: '#1a365d', padding: 25, color: '#fff' },
   main: { width: '65%', padding: 30, backgroundColor: '#fff' },
+  photo: { width: 70, height: 70, borderRadius: 35, marginBottom: 15, objectFit: 'cover', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
   name: { fontSize: 22, fontWeight: 'bold', marginBottom: 5 },
   jobTitle: { fontSize: 12, color: '#90cdf4', marginBottom: 20 },
   sideSection: { marginBottom: 20 },
@@ -210,6 +213,7 @@ export const ModernTemplate: React.FC<{ data: CVData }> = ({ data }) => (
   <Document>
     <Page size="A4" style={modernStyles.page}>
       <View style={modernStyles.sidebar}>
+        {data.personal.photo && <Image src={data.personal.photo} style={modernStyles.photo} />}
         <Text style={modernStyles.name}>{data.personal.fullName || 'Your Name'}</Text>
         <Text style={modernStyles.jobTitle}>{data.personal.jobTitle || 'Professional Title'}</Text>
         <View style={modernStyles.sideSection}>
@@ -305,8 +309,11 @@ const createGenericTemplate = (
   const styles = StyleSheet.create({
     page: { padding: sidebarBg ? 0 : 40, fontFamily: 'Helvetica', fontSize: 10, color: textColor, backgroundColor: bgColor, flexDirection: sidebarBg ? 'row' : 'column' },
     sidebar: sidebarBg ? { width: '35%', backgroundColor: sidebarBg, padding: 25, color: '#fff' } : {},
+    sidebarPhoto: { width: 60, height: 60, borderRadius: 30, marginBottom: 15, objectFit: 'cover', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
     main: sidebarBg ? { width: '65%', padding: 30, backgroundColor: bgColor } : {},
-    header: { marginBottom: 20, borderBottom: `2px solid ${accentColor}`, paddingBottom: 15 },
+    header: { marginBottom: 20, borderBottom: `2px solid ${accentColor}`, paddingBottom: 15, flexDirection: 'row', gap: 15, alignItems: 'center' },
+    headerPhoto: { width: 50, height: 50, borderRadius: 25, objectFit: 'cover', borderWidth: 2, borderColor: accentColor },
+    headerContent: { flex: 1 },
     name: { fontSize: 24, fontWeight: 'bold', color: accentColor, marginBottom: 5 },
     jobTitle: { fontSize: 12, color: textColor, opacity: 0.7, marginBottom: 10 },
     contact: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, fontSize: 9 },
@@ -334,6 +341,7 @@ const createGenericTemplate = (
         {sidebarBg ? (
           <>
             <View style={styles.sidebar}>
+              {data.personal.photo && <Image src={data.personal.photo} style={styles.sidebarPhoto} />}
               <Text style={{ ...styles.name, color: '#fff' }}>{data.personal.fullName || 'Your Name'}</Text>
               <Text style={{ ...styles.jobTitle, color: '#fff', opacity: 0.8 }}>{data.personal.jobTitle}</Text>
               <View style={{ marginTop: 20 }}>
@@ -412,12 +420,15 @@ const createGenericTemplate = (
         ) : (
           <>
             <View style={styles.header}>
-              <Text style={styles.name}>{data.personal.fullName || 'Your Name'}</Text>
-              <Text style={styles.jobTitle}>{data.personal.jobTitle}</Text>
-              <View style={styles.contact}>
-                {data.personal.email && <Text>{data.personal.email}</Text>}
-                {data.personal.phone && <Text>{data.personal.phone}</Text>}
-                {data.personal.location && <Text>{data.personal.location}</Text>}
+              {data.personal.photo && <Image src={data.personal.photo} style={styles.headerPhoto} />}
+              <View style={styles.headerContent}>
+                <Text style={styles.name}>{data.personal.fullName || 'Your Name'}</Text>
+                <Text style={styles.jobTitle}>{data.personal.jobTitle}</Text>
+                <View style={styles.contact}>
+                  {data.personal.email && <Text>{data.personal.email}</Text>}
+                  {data.personal.phone && <Text>{data.personal.phone}</Text>}
+                  {data.personal.location && <Text>{data.personal.location}</Text>}
+                </View>
               </View>
             </View>
             {data.personal.summary && (

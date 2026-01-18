@@ -219,6 +219,7 @@ export const CVProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         linkedin: '',
         summary: '',
         jobTitle: '',
+        photo: '',
       },
       experience: [],
       education: [],
