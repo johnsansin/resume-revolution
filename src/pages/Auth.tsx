@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Mail, Lock, User, Loader2 } from 'lucide-react';
+import { FileText, Mail, Lock, User, Loader2, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 
@@ -19,6 +20,9 @@ const Auth: React.FC = () => {
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [resetEmailSent, setResetEmailSent] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
@@ -122,6 +126,45 @@ const Auth: React.FC = () => {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      emailSchema.parse(forgotPasswordEmail);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        toast({
+          title: 'Validation Error',
+          description: err.errors[0].message,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
+    setIsLoading(true);
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    
+    setIsLoading(false);
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } else {
+      setResetEmailSent(true);
+      toast({
+        title: 'Email Sent!',
+        description: 'Check your inbox for the password reset link.',
+      });
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -148,16 +191,99 @@ const Auth: React.FC = () => {
       {/* Auth Form */}
       <main className="flex-1 flex items-center justify-center px-4 pb-8">
         <Card className="w-full max-w-md shadow-xl border-border/50">
-          <CardHeader className="text-center pb-2">
-            <CardTitle className="text-2xl font-bold">Welcome</CardTitle>
-            <CardDescription>Sign in to save and manage your CVs</CardDescription>
-          </CardHeader>
-          
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mx-6 mb-4" style={{ width: 'calc(100% - 3rem)' }}>
-              <TabsTrigger value="login">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
+          {showForgotPassword ? (
+            <>
+              <CardHeader className="text-center pb-2">
+                <CardTitle className="text-2xl font-bold">
+                  {resetEmailSent ? 'Check Your Email' : 'Reset Password'}
+                </CardTitle>
+                <CardDescription>
+                  {resetEmailSent 
+                    ? 'We sent you a password reset link. Check your inbox and spam folder.'
+                    : 'Enter your email to receive a password reset link'
+                  }
+                </CardDescription>
+              </CardHeader>
+              
+              {!resetEmailSent ? (
+                <form onSubmit={handleForgotPassword}>
+                  <CardContent className="space-y-4 pt-0">
+                    <div className="space-y-2">
+                      <Label htmlFor="forgot-email">Email</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="forgot-email"
+                          type="email"
+                          placeholder="you@example.com"
+                          value={forgotPasswordEmail}
+                          onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                          className="pl-10"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                  
+                  <CardFooter className="flex-col gap-3">
+                    <Button 
+                      type="submit" 
+                      className="w-full bg-accent hover:bg-accent/90"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        'Send Reset Link'
+                      )}
+                    </Button>
+                    <Button 
+                      type="button"
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => {
+                        setShowForgotPassword(false);
+                        setForgotPasswordEmail('');
+                      }}
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Back to Sign In
+                    </Button>
+                  </CardFooter>
+                </form>
+              ) : (
+                <CardFooter>
+                  <Button 
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => {
+                      setShowForgotPassword(false);
+                      setResetEmailSent(false);
+                      setForgotPasswordEmail('');
+                    }}
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back to Sign In
+                  </Button>
+                </CardFooter>
+              )}
+            </>
+          ) : (
+            <>
+              <CardHeader className="text-center pb-2">
+                <CardTitle className="text-2xl font-bold">Welcome</CardTitle>
+                <CardDescription>Sign in to save and manage your CVs</CardDescription>
+              </CardHeader>
+              
+              <Tabs defaultValue="login" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mx-6 mb-4" style={{ width: 'calc(100% - 3rem)' }}>
+                  <TabsTrigger value="login">Sign In</TabsTrigger>
+                  <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                </TabsList>
             
             <TabsContent value="login" className="mt-0">
               <form onSubmit={handleLogin}>
@@ -193,6 +319,14 @@ const Auth: React.FC = () => {
                       />
                     </div>
                   </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm text-accent hover:underline"
+                  >
+                    Forgot your password?
+                  </button>
                 </CardContent>
                 
                 <CardFooter>
@@ -299,7 +433,9 @@ const Auth: React.FC = () => {
                 </CardFooter>
               </form>
             </TabsContent>
-          </Tabs>
+              </Tabs>
+            </>
+          )}
         </Card>
       </main>
     </div>
