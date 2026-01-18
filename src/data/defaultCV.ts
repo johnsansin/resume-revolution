@@ -10,6 +10,7 @@ export const defaultCVData: CVData = {
     linkedin: '',
     summary: '',
     jobTitle: '',
+    photo: '',
   },
   experience: [],
   education: [],
@@ -28,6 +29,7 @@ export const sampleCVData: CVData = {
     linkedin: 'linkedin.com/in/sarahjohnson',
     summary: 'Passionate software engineer with 5+ years of experience building scalable web applications. Specialized in React, Node.js, and cloud technologies. Led teams to deliver products used by millions of users worldwide.',
     jobTitle: 'Senior Software Engineer',
+    photo: '',
   },
   experience: [
     {
