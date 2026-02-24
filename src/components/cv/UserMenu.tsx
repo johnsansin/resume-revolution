@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,11 +12,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { User, LogOut, LogIn } from 'lucide-react';
+import { User, LogOut, LogIn, Shield } from 'lucide-react';
 
 const UserMenu: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile, signOut, loading } = useAuth();
+  const { isAdmin } = useUserRole();
 
   if (loading) {
     return (
@@ -63,6 +65,12 @@ const UserMenu: React.FC = () => {
           <User className="mr-2 h-4 w-4" />
           <span>My Account</span>
         </DropdownMenuItem>
+        {isAdmin && (
+          <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/admin')}>
+            <Shield className="mr-2 h-4 w-4" />
+            <span>Admin Panel</span>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem 
           className="cursor-pointer text-destructive focus:text-destructive" 
