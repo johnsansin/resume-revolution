@@ -1,73 +1,86 @@
-# Welcome to your Lovable project
+# CV Maker
 
-## Project info
+Build professional, ATS-friendly resumes in minutes. A fast, privacy-first web app with curated
+templates, live preview, and one-click PDF export.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Features
 
-## How can I edit this code?
+- Modern, responsive templates (10+ styles)
+- Real-time live preview as you edit
+- AI-powered wording suggestions
+- Save, manage, and iterate on multiple resumes in the cloud
+- Export to high-quality PDF
+- Secure authentication via **Supabase** (email/password + password reset)
+- Responsive: works on desktop, tablet, and mobile
 
-There are several ways of editing your application.
+## Tech stack
 
-**Use Lovable**
+- **React 18** + **TypeScript** + **Vit**e for a snappy dev/build experience
+- **TanStack React Query** for data fetching
+- **React Hook Form** + **Zod** for type-safe forms and validation
+- **Tailwind CSS** (shadcn/ui components) for styling
+- **Supabase** for auth, database, storage, and (optional) edge functions
+- **react-pdf** / **@react-pdf/renderer** for PDF generation
+- **React Router v6** for routing
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Development
 
-Changes made via Lovable will be committed automatically to this repo.
+```bash
+# install (npm)
+npm ci
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# run dev server
 npm run dev
+# open http://localhost:8080
+
+# lint / typecheck
+npm run lint        # eslint
+npx tsc --noEmit    # typescript checks
+
+# production build
+npm run build
 ```
 
-**Edit a file directly in GitHub**
+### Environment
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Copy `.env.example` (if provided) to `.env` and fill in your Supabase project values:
 
-**Use GitHub Codespaces**
+```
+VITE_SUPABASE_URL=https://<project>.supabase.co
+VITE_SUPABASE_ANON_KEY=<your-anon-key / publishable key>
+VITE_SUPABASE_PROJECT_ID=<project-id>
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project Structure
 
-## What technologies are used for this project?
+```
+src/
+  App.tsx          # routes (/, /auth, /dashboard, /admin/*)
+  pages/           # Landing, Auth, Dashboard, admin pages, 404
+  components/      # UI blocks: cv forms, builder, sidebar, admin
+  contexts/        # AuthContext + CVContext (state)
+  integrations/supabase/  # client, types
+  hooks/           # shared React hooks
+  lib/             # helpers
+public/            # static assets (favicon, logo, manifest, sw)
+```
 
-This project is built with:
+## Supabase setup
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+The project uses the Supabase JS client. Make sure your Supabase project has the expected
+schema (tables like `profiles`, CV-related rows, etc.) and that Auth is configured with email
+confirmations / password recovery as needed.
 
-## How can I deploy this project?
+## Deploying
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+1. Build:
+   ```bash
+   npm run build
+   ```
+2. Serve the static `dist/` from any static host (Vercel, Netlify, Cloudflare Pages, S3, nginx, etc.)
+3. Configure your domain's DNS and HTTPS.
+4. Ensure `VITE_SUPABASE_*` env vars point to your production Supabase project when building.
 
-## Can I connect a custom domain to my Lovable project?
+## License
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+MIT
