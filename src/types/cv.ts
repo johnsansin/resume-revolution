@@ -3,6 +3,11 @@ export interface PersonalInfo {
   email: string;
   phone: string;
   location: string;
+  address?: string;
+  dateOfBirth?: string;
+  nationality?: string;
+  gender?: string;
+  driverLicense?: string;
   website?: string;
   linkedin?: string;
   summary: string;
@@ -42,6 +47,20 @@ export interface Language {
   id: string;
   name: string;
   proficiency: 'basic' | 'conversational' | 'fluent' | 'native';
+  cefr?: string;
+}
+
+export interface DigitalSkill {
+  id: string;
+  name: string;
+  level: 'basic' | 'independent' | 'proficient';
+}
+
+export interface Certification {
+  id: string;
+  name: string;
+  issuer: string;
+  year: string;
 }
 
 export interface Project {
@@ -59,6 +78,9 @@ export interface CVData {
   skills: Skill[];
   languages: Language[];
   projects: Project[];
+  digitalSkills?: DigitalSkill[];
+  certifications?: Certification[];
+  interests?: string[];
 }
 
 export type TemplateId = 
@@ -70,48 +92,18 @@ export type TemplateId =
   | 'executive' 
   | 'tech' 
   | 'compact' 
-  | 'elegant' 
-  | 'bold'
   | 'corporate'
   | 'academic'
   | 'startup'
-  | 'designer'
   | 'consultant'
-  | 'engineer'
-  | 'marketing'
   | 'finance'
-  | 'healthcare'
   | 'legal'
-  | 'artistic'
-  | 'gradient'
-  | 'timeline'
-  | 'infographic'
-  | 'simple'
-  | 'clean'
-  | 'formal'
-  | 'casual'
-  | 'contemporary'
-  | 'traditional'
-  | 'sleek'
-  | 'vibrant'
-  | 'monochrome'
-  | 'pastel'
-  | 'dark'
-  | 'light'
-  | 'accent'
-  | 'iconic'
-  | 'geometric'
-  | 'organic'
-  | 'modular'
-  | 'structured'
-  | 'flowing'
-  | 'metro'
-  | 'swiss'
-  | 'nordic'
-  | 'retro'
-  | 'futuristic'
-  | 'premium'
-  | 'luxe';
+  | 'healthcare'
+  | 'europass'
+  | 'ats'
+  | 'photo-modern'
+  | 'photo-classic'
+  | 'photo-creative';
 
 export interface Template {
   id: TemplateId;

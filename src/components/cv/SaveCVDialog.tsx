@@ -31,9 +31,9 @@ const SaveCVDialog: React.FC = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Save className="w-4 h-4 mr-2" />
-          Save CV
+        <Button variant="outline" size="sm" className="border-white/25 bg-white/5 text-white hover:text-white hover:bg-white/15 hover:border-white/40">
+          <Save className="w-4 h-4 md:mr-2" />
+          <span className="hidden md:inline">Save CV</span>
         </Button>
       </DialogTrigger>
       <DialogContent>

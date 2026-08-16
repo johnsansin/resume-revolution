@@ -49,9 +49,9 @@ const MyCVsDialog: React.FC = () => {
     <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" size="sm">
-            <FolderOpen className="w-4 h-4 mr-2" />
-            My CVs
+          <Button variant="outline" size="sm" className="border-white/25 bg-white/5 text-white hover:text-white hover:bg-white/15 hover:border-white/40">
+            <FolderOpen className="w-4 h-4 md:mr-2" />
+            <span className="hidden md:inline">My CVs</span>
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">

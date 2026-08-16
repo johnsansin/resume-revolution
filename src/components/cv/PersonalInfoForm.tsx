@@ -3,6 +3,8 @@ import { useCVContext } from '@/contexts/CVContext';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import DatePicker from '@/components/ui/date-picker';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User, Mail, Phone, MapPin, Globe, Linkedin, FileText, Briefcase } from 'lucide-react';
 import PhotoUpload from './PhotoUpload';
 
@@ -81,6 +83,79 @@ const PersonalInfoForm: React.FC = () => {
             value={personal.location}
             onChange={(e) => updatePersonal('location', e.target.value)}
             placeholder="San Francisco, CA"
+            className="bg-card border-border focus:border-accent transition-colors"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="address" className="flex items-center gap-2 text-foreground font-medium">
+            <MapPin className="w-4 h-4 text-accent" />
+            Street Address <span className="text-muted-foreground">(Europass)</span>
+          </Label>
+          <Input
+            id="address"
+            value={personal.address}
+            onChange={(e) => updatePersonal('address', e.target.value)}
+            placeholder="123 Market Street"
+            className="bg-card border-border focus:border-accent transition-colors"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="dateOfBirth" className="flex items-center gap-2 text-foreground font-medium">
+            <User className="w-4 h-4 text-accent" />
+            Date of Birth <span className="text-muted-foreground">(Europass)</span>
+          </Label>
+          <DatePicker
+            id="dateOfBirth"
+            value={personal.dateOfBirth}
+            onChange={(v) => updatePersonal('dateOfBirth', v)}
+            placeholder="Pick your date of birth"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="nationality" className="flex items-center gap-2 text-foreground font-medium">
+            <Globe className="w-4 h-4 text-accent" />
+            Nationality <span className="text-muted-foreground">(Europass)</span>
+          </Label>
+          <Input
+            id="nationality"
+            value={personal.nationality}
+            onChange={(e) => updatePersonal('nationality', e.target.value)}
+            placeholder="American"
+            className="bg-card border-border focus:border-accent transition-colors"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="gender" className="flex items-center gap-2 text-foreground font-medium">
+            <User className="w-4 h-4 text-accent" />
+            Gender <span className="text-muted-foreground">(Europass)</span>
+          </Label>
+          <Select value={personal.gender || ''} onValueChange={(v) => updatePersonal('gender', v)}>
+            <SelectTrigger id="gender" className="bg-card border-border focus:border-accent transition-colors">
+              <SelectValue placeholder="Select gender" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Female">Female</SelectItem>
+              <SelectItem value="Male">Male</SelectItem>
+              <SelectItem value="Non-binary">Non-binary</SelectItem>
+              <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="driverLicense" className="flex items-center gap-2 text-foreground font-medium">
+            <User className="w-4 h-4 text-accent" />
+            Driving Licence <span className="text-muted-foreground">(Europass)</span>
+          </Label>
+          <Input
+            id="driverLicense"
+            value={personal.driverLicense}
+            onChange={(e) => updatePersonal('driverLicense', e.target.value)}
+            placeholder="B, AM"
             className="bg-card border-border focus:border-accent transition-colors"
           />
         </div>

@@ -7,6 +7,8 @@ interface CVContextType {
   setCVData: React.Dispatch<React.SetStateAction<CVData>>;
   selectedTemplate: TemplateId;
   setSelectedTemplate: React.Dispatch<React.SetStateAction<TemplateId>>;
+  showPhoto: boolean;
+  setShowPhoto: React.Dispatch<React.SetStateAction<boolean>>;
   updatePersonal: (field: keyof CVData['personal'], value: string) => void;
   addExperience: () => void;
   updateExperience: (id: string, field: string, value: string | boolean) => void;
@@ -23,6 +25,13 @@ interface CVContextType {
   addProject: () => void;
   updateProject: (id: string, field: string, value: string | string[]) => void;
   removeProject: (id: string) => void;
+  addDigitalSkill: () => void;
+  updateDigitalSkill: (id: string, field: string, value: string) => void;
+  removeDigitalSkill: (id: string) => void;
+  addCertification: () => void;
+  updateCertification: (id: string, field: string, value: string) => void;
+  removeCertification: (id: string) => void;
+  updateInterests: (value: string[]) => void;
   loadSampleData: () => void;
   clearAllData: () => void;
 }
@@ -42,6 +51,7 @@ const generateId = () => Math.random().toString(36).substr(2, 9);
 export const CVProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [cvData, setCVData] = useState<CVData>(sampleCVData);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>('modern');
+  const [showPhoto, setShowPhoto] = useState(true);
 
   const updatePersonal = (field: keyof CVData['personal'], value: string) => {
     setCVData(prev => ({
@@ -204,6 +214,62 @@ export const CVProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }));
   };
 
+  const addDigitalSkill = () => {
+    setCVData(prev => ({
+      ...prev,
+      digitalSkills: [
+        ...(prev.digitalSkills || []),
+        { id: generateId(), name: '', level: 'independent' as const },
+      ],
+    }));
+  };
+
+  const updateDigitalSkill = (id: string, field: string, value: string) => {
+    setCVData(prev => ({
+      ...prev,
+      digitalSkills: (prev.digitalSkills || []).map(skill =>
+        skill.id === id ? { ...skill, [field]: value } : skill
+      ),
+    }));
+  };
+
+  const removeDigitalSkill = (id: string) => {
+    setCVData(prev => ({
+      ...prev,
+      digitalSkills: (prev.digitalSkills || []).filter(skill => skill.id !== id),
+    }));
+  };
+
+  const addCertification = () => {
+    setCVData(prev => ({
+      ...prev,
+      certifications: [
+        ...(prev.certifications || []),
+        { id: generateId(), name: '', issuer: '', year: '' },
+      ],
+    }));
+  };
+
+  const updateCertification = (id: string, field: string, value: string) => {
+    setCVData(prev => ({
+      ...prev,
+      certifications: (prev.certifications || []).map(cert =>
+        cert.id === id ? { ...cert, [field]: value } : cert
+      ),
+    }));
+  };
+
+  const removeCertification = (id: string) => {
+    setCVData(prev => ({
+      ...prev,
+      certifications: (prev.certifications || []).filter(cert => cert.id !== id),
+    }));
+  };
+
+  const updateInterests = (value: string[]) => {
+    setCVData(prev => ({ ...prev, interests: value }));
+  };
+
   const loadSampleData = () => {
     setCVData(sampleCVData);
   };
@@ -215,6 +281,11 @@ export const CVProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         email: '',
         phone: '',
         location: '',
+        address: '',
+        dateOfBirth: '',
+        nationality: '',
+        gender: '',
+        driverLicense: '',
         website: '',
         linkedin: '',
         summary: '',
@@ -226,6 +297,9 @@ export const CVProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       skills: [],
       languages: [],
       projects: [],
+      digitalSkills: [],
+      certifications: [],
+      interests: [],
     });
   };
 
@@ -236,6 +310,8 @@ export const CVProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         setCVData,
         selectedTemplate,
         setSelectedTemplate,
+        showPhoto,
+        setShowPhoto,
         updatePersonal,
         addExperience,
         updateExperience,
@@ -252,6 +328,13 @@ export const CVProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         addProject,
         updateProject,
         removeProject,
+        addDigitalSkill,
+        updateDigitalSkill,
+        removeDigitalSkill,
+        addCertification,
+        updateCertification,
+        removeCertification,
+        updateInterests,
         loadSampleData,
         clearAllData,
       }}

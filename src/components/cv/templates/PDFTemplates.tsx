@@ -1,6 +1,8 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer';
 import { CVData } from '@/types/cv';
+import { EuropassTemplate } from './EuropassTemplate';
+import { ATSTemplate } from './ATSTemplate';
 
 // Register fonts
 Font.register({
@@ -87,11 +89,11 @@ const classicStyles = StyleSheet.create({
   techTag: { backgroundColor: '#e6fffa', padding: '2 5', borderRadius: 2, fontSize: 8, color: '#234e52' },
 });
 
-export const ClassicTemplate: React.FC<{ data: CVData }> = ({ data }) => (
+export const ClassicTemplate: React.FC<{ data: CVData; showPhoto?: boolean }> = ({ data, showPhoto = true }) => (
   <Document>
     <Page size="A4" style={classicStyles.page}>
       <View style={classicStyles.header}>
-        {data.personal.photo && <Image src={data.personal.photo} style={classicStyles.photo} />}
+        {showPhoto && data.personal.photo && <Image src={data.personal.photo} style={classicStyles.photo} />}
         <Text style={classicStyles.name}>{data.personal.fullName || 'Your Name'}</Text>
         <Text style={classicStyles.jobTitle}>{data.personal.jobTitle || 'Professional Title'}</Text>
         <View style={classicStyles.contact}>
@@ -209,11 +211,11 @@ const modernStyles = StyleSheet.create({
   techTag: { backgroundColor: '#ebf8ff', padding: '2 5', borderRadius: 2, fontSize: 8, color: '#2b6cb0' },
 });
 
-export const ModernTemplate: React.FC<{ data: CVData }> = ({ data }) => (
+export const ModernTemplate: React.FC<{ data: CVData; showPhoto?: boolean }> = ({ data, showPhoto = true }) => (
   <Document>
     <Page size="A4" style={modernStyles.page}>
       <View style={modernStyles.sidebar}>
-        {data.personal.photo && <Image src={data.personal.photo} style={modernStyles.photo} />}
+        {showPhoto && data.personal.photo && <Image src={data.personal.photo} style={modernStyles.photo} />}
         <Text style={modernStyles.name}>{data.personal.fullName || 'Your Name'}</Text>
         <Text style={modernStyles.jobTitle}>{data.personal.jobTitle || 'Professional Title'}</Text>
         <View style={modernStyles.sideSection}>
@@ -304,15 +306,17 @@ const createGenericTemplate = (
   accentColor: string,
   bgColor: string = '#fff',
   textColor: string = '#333',
-  sidebarBg?: string
-): React.FC<{ data: CVData }> => {
+  sidebarBg?: string,
+  photoSize: 'normal' | 'large' = 'normal'
+): React.FC<{ data: CVData; showPhoto?: boolean }> => {
+  const isLarge = photoSize === 'large';
   const styles = StyleSheet.create({
     page: { padding: sidebarBg ? 0 : 40, fontFamily: 'Helvetica', fontSize: 10, color: textColor, backgroundColor: bgColor, flexDirection: sidebarBg ? 'row' : 'column' },
     sidebar: sidebarBg ? { width: '35%', backgroundColor: sidebarBg, padding: 25, color: '#fff' } : {},
-    sidebarPhoto: { width: 60, height: 60, borderRadius: 30, marginBottom: 15, objectFit: 'cover', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
+    sidebarPhoto: { width: isLarge ? 110 : 60, height: isLarge ? 110 : 60, borderRadius: isLarge ? 55 : 30, marginBottom: 15, objectFit: 'cover', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
     main: sidebarBg ? { width: '65%', padding: 30, backgroundColor: bgColor } : {},
     header: { marginBottom: 20, borderBottom: `2px solid ${accentColor}`, paddingBottom: 15, flexDirection: 'row', gap: 15, alignItems: 'center' },
-    headerPhoto: { width: 50, height: 50, borderRadius: 25, objectFit: 'cover', borderWidth: 2, borderColor: accentColor },
+    headerPhoto: { width: isLarge ? 84 : 50, height: isLarge ? 84 : 50, borderRadius: isLarge ? 42 : 25, objectFit: 'cover', borderWidth: 2, borderColor: accentColor },
     headerContent: { flex: 1 },
     name: { fontSize: 24, fontWeight: 'bold', color: accentColor, marginBottom: 5 },
     jobTitle: { fontSize: 12, color: textColor, opacity: 0.7, marginBottom: 10 },
@@ -335,13 +339,13 @@ const createGenericTemplate = (
     techTag: { backgroundColor: `${accentColor}15`, padding: '2 5', borderRadius: 2, fontSize: 8, color: accentColor },
   });
 
-  return ({ data }) => (
+  return ({ data, showPhoto = true }) => (
     <Document>
       <Page size="A4" style={styles.page}>
         {sidebarBg ? (
           <>
             <View style={styles.sidebar}>
-              {data.personal.photo && <Image src={data.personal.photo} style={styles.sidebarPhoto} />}
+              {showPhoto && data.personal.photo && <Image src={data.personal.photo} style={styles.sidebarPhoto} />}
               <Text style={{ ...styles.name, color: '#fff' }}>{data.personal.fullName || 'Your Name'}</Text>
               <Text style={{ ...styles.jobTitle, color: '#fff', opacity: 0.8 }}>{data.personal.jobTitle}</Text>
               <View style={{ marginTop: 20 }}>
@@ -420,7 +424,7 @@ const createGenericTemplate = (
         ) : (
           <>
             <View style={styles.header}>
-              {data.personal.photo && <Image src={data.personal.photo} style={styles.headerPhoto} />}
+              {showPhoto && data.personal.photo && <Image src={data.personal.photo} style={styles.headerPhoto} />}
               <View style={styles.headerContent}>
                 <Text style={styles.name}>{data.personal.fullName || 'Your Name'}</Text>
                 <Text style={styles.jobTitle}>{data.personal.jobTitle}</Text>
@@ -649,8 +653,19 @@ export const PremiumTemplate = createGenericTemplate('#c9a227', '#1a1a1a', '#f7f
 // 50. Luxe
 export const LuxeTemplate = createGenericTemplate('#d4af37', '#0d0d0d', '#fff', '#1a1a1a');
 
+// 51. Photo Modern
+export const PhotoModernTemplate = createGenericTemplate('#0f172a', '#fff', '#334155', '#0f172a', 'large');
+
+// 52. Photo Classic
+export const PhotoClassicTemplate = createGenericTemplate('#1a365d', '#fff', '#334155', undefined, 'large');
+
+// 53. Photo Creative
+export const PhotoCreativeTemplate = createGenericTemplate('#7c3aed', '#fff', '#2d3748', '#7c3aed', 'large');
+
 // Template map for easy access
 export const templates = {
+  europass: EuropassTemplate,
+  ats: ATSTemplate,
   classic: ClassicTemplate,
   modern: ModernTemplate,
   minimal: MinimalTemplate,
@@ -659,46 +674,14 @@ export const templates = {
   executive: ExecutiveTemplate,
   tech: TechTemplate,
   compact: CompactTemplate,
-  elegant: ElegantTemplate,
-  bold: BoldTemplate,
   corporate: CorporateTemplate,
   academic: AcademicTemplate,
   startup: StartupTemplate,
-  designer: DesignerTemplate,
   consultant: ConsultantTemplate,
-  engineer: EngineerTemplate,
-  marketing: MarketingTemplate,
   finance: FinanceTemplate,
   healthcare: HealthcareTemplate,
   legal: LegalTemplate,
-  artistic: ArtisticTemplate,
-  gradient: GradientTemplate,
-  timeline: TimelineTemplate,
-  infographic: InfographicTemplate,
-  simple: SimpleTemplate,
-  clean: CleanTemplate,
-  formal: FormalTemplate,
-  casual: CasualTemplate,
-  contemporary: ContemporaryTemplate,
-  traditional: TraditionalTemplate,
-  sleek: SleekTemplate,
-  vibrant: VibrantTemplate,
-  monochrome: MonochromeTemplate,
-  pastel: PastelTemplate,
-  dark: DarkTemplate,
-  light: LightTemplate,
-  accent: AccentTemplate,
-  iconic: IconicTemplate,
-  geometric: GeometricTemplate,
-  organic: OrganicTemplate,
-  modular: ModularTemplate,
-  structured: StructuredTemplate,
-  flowing: FlowingTemplate,
-  metro: MetroTemplate,
-  swiss: SwissTemplate,
-  nordic: NordicTemplate,
-  retro: RetroTemplate,
-  futuristic: FuturisticTemplate,
-  premium: PremiumTemplate,
-  luxe: LuxeTemplate,
+  'photo-modern': PhotoModernTemplate,
+  'photo-classic': PhotoClassicTemplate,
+  'photo-creative': PhotoCreativeTemplate,
 };

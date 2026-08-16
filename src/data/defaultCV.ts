@@ -6,6 +6,11 @@ export const defaultCVData: CVData = {
     email: '',
     phone: '',
     location: '',
+    address: '',
+    dateOfBirth: '',
+    nationality: '',
+    gender: '',
+    driverLicense: '',
     website: '',
     linkedin: '',
     summary: '',
@@ -17,6 +22,9 @@ export const defaultCVData: CVData = {
   skills: [],
   languages: [],
   projects: [],
+  digitalSkills: [],
+  certifications: [],
+  interests: [],
 };
 
 export const sampleCVData: CVData = {
@@ -25,6 +33,11 @@ export const sampleCVData: CVData = {
     email: 'sarah.johnson@email.com',
     phone: '+1 (555) 123-4567',
     location: 'San Francisco, CA',
+    address: '123 Market Street, San Francisco, CA 94105',
+    dateOfBirth: '1995-04-12',
+    nationality: 'American',
+    gender: 'Female',
+    driverLicense: 'B',
     website: 'www.sarahjohnson.dev',
     linkedin: 'linkedin.com/in/sarahjohnson',
     summary: 'Passionate software engineer with 5+ years of experience building scalable web applications. Specialized in React, Node.js, and cloud technologies. Led teams to deliver products used by millions of users worldwide.',
@@ -86,4 +99,15 @@ export const sampleCVData: CVData = {
       technologies: ['React', 'Node.js', 'PostgreSQL', 'Stripe'],
     },
   ],
+  digitalSkills: [
+    { id: '1', name: 'Information processing', level: 'proficient' },
+    { id: '2', name: 'Communication & collaboration', level: 'proficient' },
+    { id: '3', name: 'Content creation', level: 'independent' },
+    { id: '4', name: 'Problem solving', level: 'proficient' },
+  ],
+  certifications: [
+    { id: '1', name: 'AWS Solutions Architect – Associate', issuer: 'Amazon Web Services', year: '2023' },
+    { id: '2', name: 'Professional Scrum Master I', issuer: 'Scrum.org', year: '2022' },
+  ],
+  interests: ['Open source', 'Hiking', 'Photography'],
 };

@@ -44,6 +44,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       .single();
     
     if (!error && data) {
+      if ((data as any).is_active === false) {
+        // Account deactivated by superadmin — sign out immediately
+        await supabase.auth.signOut();
+        setProfile(null);
+        return;
+      }
       setProfile(data);
     }
   };
@@ -101,12 +107,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    
-    return { error: error as Error | null };
+
+    if (error) return { error: error as Error | null };
+
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profile && (profile as any).is_active === false) {
+        await supabase.auth.signOut();
+        return { error: new Error('This account has been deactivated. Contact the administrator.') };
+      }
+    }
+
+    return { error: null };
   };
 
   const signOut = async () => {

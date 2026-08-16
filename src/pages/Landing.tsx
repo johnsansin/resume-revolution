@@ -11,6 +11,9 @@ import {
   Clock,
   ChevronRight,
   ArrowRight,
+  ScanSearch,
+  FileSignature,
+  FileCheck2,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -18,7 +21,22 @@ const features = [
   {
     icon: <LayoutDashboard className="w-6 h-6 text-accent" />,
     title: 'Professional Templates',
-    desc: 'Choose from curated, ATS-friendly templates designed for every industry.',
+    desc: '52 templates for every industry — including official Europass CV and ATS-friendly formats.',
+  },
+  {
+    icon: <ScanSearch className="w-6 h-6 text-accent" />,
+    title: 'ATS Score Checker',
+    desc: 'Paste any job description and get an ATS score with keyword matching and instant fixes.',
+  },
+  {
+    icon: <FileCheck2 className="w-6 h-6 text-accent" />,
+    title: 'Europass CV',
+    desc: 'Generate an official Europass-format CV that is recognized across the European Union.',
+  },
+  {
+    icon: <FileSignature className="w-6 h-6 text-accent" />,
+    title: 'Cover & Motivation Letters',
+    desc: 'Generate a polished cover letter (US) or motivation letter (EU) in two clicks, from your CV.',
   },
   {
     icon: <Sparkles className="w-6 h-6 text-accent" />,
