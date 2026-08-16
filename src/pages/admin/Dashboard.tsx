@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOnlineUsers } from '@/hooks/useOnlineUsers';
 import { Link } from 'react-router-dom';
 import {
   Users,
@@ -13,6 +14,8 @@ import {
   TrendingUp,
   UserCheck,
   UserX,
+  Wifi,
+  WifiOff,
   Loader2,
   ArrowRight,
   CalendarDays,
@@ -47,6 +50,7 @@ const initials = (name?: string | null, email?: string | null) => {
 
 const Dashboard: React.FC = () => {
   const { profile } = useAuth();
+  const onlineIds = useOnlineUsers();
   const [stats, setStats] = useState({ users: 0, cvs: 0, admins: 0, recentCVs: 0, active: 0, inactive: 0 });
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [recentCvs, setRecentCvs] = useState<RecentCv[]>([]);
@@ -119,13 +123,18 @@ const Dashboard: React.FC = () => {
   });
   const adminName = profile?.display_name || 'Superadmin';
 
-  const cards = [
+  const onlineCount = onlineIds.size;
+  const offlineCount = Math.max(0, stats.users - onlineCount);
+
+  const cards: { label: string; value: number; icon: React.ComponentType<any>; grad: string; live?: boolean }[] = [
     { label: 'Total Users', value: stats.users, icon: Users, grad: 'from-sky-500 to-blue-600' },
-    { label: 'Active Candidates', value: stats.active, icon: UserCheck, grad: 'from-emerald-400 to-emerald-600' },
+    { label: 'Online Now', value: onlineCount, icon: Wifi, grad: 'from-emerald-400 to-emerald-600', live: true },
+    { label: 'Offline', value: offlineCount, icon: WifiOff, grad: 'from-slate-400 to-slate-600' },
+    { label: 'Active Candidates', value: stats.active, icon: UserCheck, grad: 'from-teal-400 to-cyan-500' },
     { label: 'Deactivated', value: stats.inactive, icon: UserX, grad: 'from-rose-400 to-rose-600' },
     { label: 'Total CVs', value: stats.cvs, icon: FileText, grad: 'from-violet-500 to-purple-600' },
     { label: 'Superadmins', value: stats.admins, icon: Shield, grad: 'from-amber-400 to-orange-500' },
-    { label: 'CVs (7 days)', value: stats.recentCVs, icon: TrendingUp, grad: 'from-teal-400 to-cyan-500' },
+    { label: 'CVs (7 days)', value: stats.recentCVs, icon: TrendingUp, grad: 'from-sky-400 to-indigo-500' },
   ];
 
   return (
@@ -157,7 +166,15 @@ const Dashboard: React.FC = () => {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
+                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                      {card.label}
+                      {card.live && (
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                        </span>
+                      )}
+                    </p>
                     <p className="text-3xl font-bold text-foreground mt-1">{card.value}</p>
                   </div>
                   <span

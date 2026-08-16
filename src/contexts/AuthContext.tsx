@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { usePresence } from '@/hooks/usePresence';
+import { getGeoInfo } from '@/lib/geo';
 
 interface Profile {
   id: string;
@@ -35,6 +37,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  usePresence(user?.id);
+
+  const logLogin = async (u: User) => {
+    try {
+      const geo = await getGeoInfo();
+      await supabase.from('login_history').insert({
+        user_id: u.id,
+        email: u.email,
+        ip_address: geo?.ip,
+        country: geo?.country,
+        country_code: geo?.country_code,
+        city: geo?.city,
+        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 300) : null,
+      });
+    } catch {
+      // never block login on logging failure
+    }
+  };
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
@@ -115,6 +136,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (error) return { error: error as Error | null };
 
     if (data.user) {
+      logLogin(data.user);
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')

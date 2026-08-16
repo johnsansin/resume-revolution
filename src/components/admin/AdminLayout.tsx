@@ -18,6 +18,7 @@ import {
   ExternalLink,
   Search,
   Sparkles,
+  History,
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -27,6 +28,7 @@ interface AdminLayoutProps {
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { path: '/admin/users', label: 'Users', icon: Users },
+  { path: '/admin/login-history', label: 'Login History', icon: History },
   { path: '/admin/cvs', label: 'CVs', icon: FileText },
   { path: '/admin/roles', label: 'Roles', icon: Shield },
 ];
@@ -34,6 +36,7 @@ const navItems = [
 const pageTitles: Record<string, string> = {
   '/admin': 'Dashboard',
   '/admin/users': 'Users',
+  '/admin/login-history': 'Login History',
   '/admin/cvs': 'Saved CVs',
   '/admin/roles': 'Role Management',
 };
