@@ -89,6 +89,30 @@ be connected to an email provider in production; raw reset tokens are never logg
 3. Configure your domain's DNS and HTTPS.
 4. Proxy `/api` to the backend and configure the production environment values above.
 
+## Docker deployment
+
+```bash
+cp .env.docker.example .env.docker
+# Edit .env.docker and replace all passwords and secrets.
+docker compose --env-file .env.docker up --build -d
+```
+
+The frontend is available on `http://localhost:3000` by default. The backend and database stay on the private Compose network; frontend requests to `/api` are proxied to the backend. PostgreSQL data is stored in the persistent `postgres_data` volume.
+
+Useful commands:
+
+```bash
+docker compose --env-file .env.docker ps
+docker compose --env-file .env.docker logs -f
+docker compose --env-file .env.docker down
+```
+
+To create or update the admin account after startup:
+
+```bash
+docker compose --env-file .env.docker run --rm backend node dist/seed.js
+```
+
 ## License
 
 MIT
