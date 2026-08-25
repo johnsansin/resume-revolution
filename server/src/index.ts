@@ -11,7 +11,7 @@ import adminRoutes from './routes/admin.js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:8080,http://localhost:5173')
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000')
   .split(',').map((origin) => origin.trim()).filter(Boolean);
 app.disable('x-powered-by');
 app.set('trust proxy', 1);

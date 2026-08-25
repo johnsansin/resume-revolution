@@ -15,7 +15,7 @@ templates, live preview, and one-click PDF export.
 
 ## Tech stack
 
-- **React 18** + **TypeScript** + **Vit**e for a snappy dev/build experience
+- **Next.js 16** + **React 19** + **TypeScript**
 - **TanStack React Query** for data fetching
 - **React Hook Form** + **Zod** for type-safe forms and validation
 - **Tailwind CSS** (shadcn/ui components) for styling
@@ -31,7 +31,7 @@ npm ci
 
 # run dev server
 npm run dev
-# open http://localhost:8080
+# open http://localhost:3000
 
 # lint / typecheck
 npm run lint        # eslint
@@ -50,7 +50,7 @@ VITE_API_URL=http://localhost:3001/api
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cv_maker
 JWT_SECRET=<at-least-32-random-characters>
 JWT_EXPIRES_IN=7d
-CORS_ORIGINS=http://localhost:8080
+CORS_ORIGINS=http://localhost:3000
 ```
 
 ## Project Structure
@@ -58,7 +58,7 @@ CORS_ORIGINS=http://localhost:8080
 ```
 src/
   App.tsx          # routes (/, /auth, /dashboard, /admin/*)
-  pages/           # Landing, Auth, Dashboard, admin pages, 404
+  views/           # Landing, Auth, Dashboard, admin pages, 404
   components/      # UI blocks: cv forms, builder, sidebar, admin
   contexts/        # AuthContext + CVContext (state)
   integrations/api/  # typed API client
@@ -85,7 +85,7 @@ be connected to an email provider in production; raw reset tokens are never logg
    ```bash
    npm run build
    ```
-2. Serve the static `dist/` from any static host (Vercel, Netlify, Cloudflare Pages, S3, nginx, etc.)
+2. Run `npm start` or deploy the Next.js standalone output to a compatible host.
 3. Configure your domain's DNS and HTTPS.
 4. Proxy `/api` to the backend and configure the production environment values above.
 
