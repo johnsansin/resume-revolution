@@ -21,6 +21,10 @@ export interface ATSResult {
   keywords: ATSKeyword[];
   matchedKeywords: string[];
   missingKeywords: string[];
+  matchScore: number;
+  eligibility: 'Strong match' | 'Potential match' | 'Low match';
+  strengths: string[];
+  recommendations: string[];
 }
 
 const STOPWORDS = new Set([
@@ -144,6 +148,7 @@ export const analyzeATS = (cv: CVData, jobDescription: string): ATSResult => {
   const matchedKeywords = keywords.filter((k) => k.found).map((k) => k.keyword);
   const missingKeywords = keywords.filter((k) => !k.found).map((k) => k.keyword);
   const keywordScore = keywords.length > 0 ? Math.round((matchedKeywords.length / keywords.length) * 20) : 0;
+  const matchScore = keywords.length > 0 ? Math.round((matchedKeywords.length / keywords.length) * 100) : 0;
   issues.push(check(
     'keywords',
     `Keyword match ${keywordsOk ? `(${matchedKeywords.length}/${keywords.length})` : '— paste a job description'}`,
@@ -159,6 +164,11 @@ export const analyzeATS = (cv: CVData, jobDescription: string): ATSResult => {
   const earned = issues.reduce((sum, i) => sum + i.earned, 0);
   const score = Math.max(0, Math.min(100, earned));
   const grade = score >= 85 ? 'Excellent' : score >= 70 ? 'Good' : score >= 50 ? 'Fair' : 'Needs work';
+  const eligibility = matchScore >= 70 && score >= 70
+    ? 'Strong match'
+    : matchScore >= 40 && score >= 50 ? 'Potential match' : 'Low match';
+  const strengths = issues.filter((issue) => issue.passed).slice(0, 5).map((issue) => issue.label);
+  const recommendations = issues.filter((issue) => !issue.passed).slice(0, 5).map((issue) => issue.tip);
 
   return {
     score,
@@ -167,5 +177,9 @@ export const analyzeATS = (cv: CVData, jobDescription: string): ATSResult => {
     keywords,
     matchedKeywords,
     missingKeywords,
+    matchScore,
+    eligibility,
+    strengths,
+    recommendations,
   };
 };

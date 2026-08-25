@@ -1,7 +1,7 @@
 {
-  "name": "CV Maker - Create Professional Resumes",
-  "short_name": "CV Maker",
-  "description": "Create stunning professional resumes with our free online CV maker. Choose from 10 beautiful templates and download as PDF instantly.",
+  "name": "Free CV Builder - Create Professional Resumes",
+  "short_name": "CV Builder",
+  "description": "Create stunning professional resumes with our free CV builder. Choose from 10 beautiful templates and download as PDF instantly.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

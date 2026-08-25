@@ -1,162 +1,110 @@
-import React, { useState, useRef } from 'react';
-import { useCVContext } from '@/contexts/CVContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Camera, Trash2, Upload, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2, Camera, X } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
-const PhotoUpload: React.FC = () => {
-  const { cvData, updatePersonal } = useCVContext();
-  const { user } = useAuth();
+interface PhotoUploadProps {
+  value: string;
+  onChange: (url: string) => void;
+}
+
+const PhotoUpload: React.FC<PhotoUploadProps> = ({ value, onChange }) => {
   const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file');
-      return;
-    }
-
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be less than 5MB');
+      toast({ title: 'File too large', description: 'Photo must be under 5MB', variant: 'destructive' });
       return;
     }
 
-    if (!user) {
-      // For non-authenticated users, use local file URL
-      const localUrl = URL.createObjectURL(file);
-      updatePersonal('photo', localUrl);
-      toast.success('Photo added (sign in to save permanently)');
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid file type', description: 'Please upload an image file', variant: 'destructive' });
       return;
     }
 
     setUploading(true);
 
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-
-      // Delete old photo if exists
-      if (cvData.personal.photo) {
-        const oldPath = cvData.personal.photo.split('/profile-photos/')[1];
-        if (oldPath) {
-          await supabase.storage.from('profile-photos').remove([oldPath]);
-        }
-      }
-
-      // Upload new photo
-      const { error: uploadError } = await supabase.storage
-        .from('profile-photos')
-        .upload(fileName, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('profile-photos')
-        .getPublicUrl(fileName);
-
-      updatePersonal('photo', publicUrl);
-      toast.success('Photo uploaded successfully');
-    } catch (error) {
-      console.error('Upload error:', error);
-      toast.error('Failed to upload photo');
-    } finally {
+      // Convert to base64 data URL for storage in the CV data
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        onChange(dataUrl);
+        setUploading(false);
+        toast({ title: 'Photo uploaded' });
+      };
+      reader.onerror = () => {
+        setUploading(false);
+        toast({ title: 'Upload failed', description: 'Could not read the file', variant: 'destructive' });
+      };
+      reader.readAsDataURL(file);
+    } catch {
       setUploading(false);
+      toast({ title: 'Upload failed', description: 'An unexpected error occurred', variant: 'destructive' });
     }
   };
 
-  const handleRemovePhoto = async () => {
-    if (!cvData.personal.photo) return;
-
-    if (user && cvData.personal.photo.includes('profile-photos')) {
-      try {
-        const oldPath = cvData.personal.photo.split('/profile-photos/')[1];
-        if (oldPath) {
-          await supabase.storage.from('profile-photos').remove([oldPath]);
-        }
-      } catch (error) {
-        console.error('Delete error:', error);
-      }
-    }
-
-    updatePersonal('photo', '');
-    toast.success('Photo removed');
+  const handleRemove = () => {
+    onChange('');
   };
-
-  const initials = cvData.personal.fullName
-    ? cvData.personal.fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : 'CV';
 
   return (
-    <div className="flex flex-col items-center gap-4 p-4 border border-border rounded-lg bg-card/50">
-      <div className="relative group">
-        <Avatar className="w-32 h-32 border-4 border-accent/20">
-          <AvatarImage src={cvData.personal.photo} alt="Profile photo" />
-          <AvatarFallback className="text-2xl bg-accent/10 text-accent">
-            {initials}
-          </AvatarFallback>
-        </Avatar>
-        
-        {!uploading && (
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-          >
-            <Camera className="w-8 h-8 text-white" />
-          </button>
-        )}
-        
-        {uploading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
-            <Loader2 className="w-8 h-8 text-white animate-spin" />
+    <div className="space-y-2">
+      <Label>Photo</Label>
+      <div className="flex items-center gap-4">
+        {value ? (
+          <div className="relative">
+            <img
+              src={value}
+              alt="Profile"
+              className="w-20 h-20 rounded-full object-cover border-2 border-border"
+            />
+            <Button
+              type="button"
+              variant="destructive"
+              size="icon"
+              className="absolute -top-1 -right-1 h-6 w-6"
+              onClick={handleRemove}
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
+        ) : (
+          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-border">
+            <Camera className="w-6 h-6 text-muted-foreground" />
           </div>
         )}
-      </div>
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleFileChange}
-        className="hidden"
-      />
-
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-        >
-          <Upload className="w-4 h-4 mr-2" />
-          {cvData.personal.photo ? 'Change' : 'Upload'}
-        </Button>
-        
-        {cvData.personal.photo && (
+        <div>
+          <Input
+            type="file"
+            accept="image/*"
+            onChange={handleUpload}
+            className="hidden"
+            id="photo-upload"
+          />
           <Button
+            type="button"
             variant="outline"
             size="sm"
-            onClick={handleRemovePhoto}
             disabled={uploading}
-            className="text-destructive hover:text-destructive"
+            onClick={() => document.getElementById('photo-upload')?.click()}
           >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Remove
+            {uploading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Camera className="w-4 h-4 mr-2" />
+            )}
+            {value ? 'Change Photo' : 'Upload Photo'}
           </Button>
-        )}
+          <p className="text-xs text-muted-foreground mt-1">Max 5MB, JPG/PNG</p>
+        </div>
       </div>
-
-      <p className="text-xs text-muted-foreground text-center">
-        Upload a professional photo (max 5MB)
-      </p>
     </div>
   );
 };

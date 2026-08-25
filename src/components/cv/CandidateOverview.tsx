@@ -3,11 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCVContext } from '@/contexts/CVContext';
 import { useSavedCVs } from '@/hooks/useSavedCVs';
+import { api } from '@/integrations/api/client';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Logo } from '@/components/ui/logo';
-import UserMenu from './UserMenu';
-import ThemeToggle from '@/components/ThemeToggle';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import AICareerCoach from './AICareerCoach';
 import { formatDistanceToNow } from 'date-fns';
 import { CVData, TemplateId } from '@/types/cv';
 import {
@@ -24,47 +33,46 @@ import {
   Clock,
   FileText,
   TrendingUp,
-  GraduationCap,
   Briefcase,
   PlayCircle,
   PlusCircle,
+  AlertTriangle,
+  Share2, Copy, Check,
 } from 'lucide-react';
 
 interface SavedCV {
   id: string;
   name: string;
-  cv_data: CVData;
-  template_id: TemplateId;
-  created_at: string;
-  updated_at: string;
+  cvData: CVData;
+  templateId: TemplateId;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface CandidateOverviewProps {
-  onContinue: () => void;
+  onContinue: (section?: string) => void;
   onDownload: () => void;
+  onDownloadSaved: (data: CVData, template: TemplateId, name: string) => Promise<void>;
   isDownloading: boolean;
+  onWorkspaceNavigate?: (target: 'letters' | 'settings' | 'saved-cvs' | 'ai-career-coach') => void;
 }
 
-const StatCard: React.FC<{ icon: React.ElementType; label: string; value: string; gradient: string }> = ({ icon: Icon, label, value, gradient }) => (
-  <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-card ring-1 ring-border/30">
-    <div className="flex items-center gap-3.5">
-      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${gradient} shadow-md`}>
-        <Icon className="w-5 h-5 text-white" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-2xl font-extrabold text-foreground leading-none truncate">{value}</p>
-        <p className="text-xs text-muted-foreground mt-1.5 truncate">{label}</p>
-      </div>
-    </div>
-  </div>
-);
-
-const CandidateOverview: React.FC<CandidateOverviewProps> = ({ onContinue, onDownload, isDownloading }) => {
-  const { profile } = useAuth();
+const CandidateOverview: React.FC<CandidateOverviewProps> = ({ onContinue, onDownload, onDownloadSaved, isDownloading, onWorkspaceNavigate }) => {
+  const { user } = useAuth();
   const { cvData, selectedTemplate, loadSampleData, setCVData, setSelectedTemplate } = useCVContext();
   const { savedCVs, loading: cvsLoading, deleteCV } = useSavedCVs();
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [downloadingCV, setDownloadingCV] = useState<string | null>(null);
+  const [sharingCV,setSharingCV]=useState<string|null>(null);
+  const [shareLink,setShareLink]=useState('');
+  const [shareName,setShareName]=useState('');
+  const [copied,setCopied]=useState(false);
+
+  // Delete confirmation modal
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [cvToDelete, setCvToDelete] = useState<SavedCV | null>(null);
+  const [confirmText, setConfirmText] = useState('');
 
   const sections = useMemo(() => {
     const checks = [
@@ -85,105 +93,92 @@ const CandidateOverview: React.FC<CandidateOverviewProps> = ({ onContinue, onDow
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-  const displayName = profile?.display_name || 'there';
+  const displayName = user?.displayName || user?.email || 'there';
   const firstName = displayName.split(' ')[0];
   const initials = displayName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
 
-  const ringSize = 128;
-  const ringStroke = 10;
+  const ringSize = 80;
+  const ringStroke = 6;
   const ringR = (ringSize - ringStroke) / 2;
   const ringCirc = 2 * Math.PI * ringR;
 
   const loadCV = (cv: SavedCV) => {
-    setCVData(cv.cv_data);
-    setSelectedTemplate(cv.template_id);
+    localStorage.setItem('career_active_saved_cv',JSON.stringify({id:cv.id,name:cv.name}));
+    setCVData(cv.cvData);
+    setSelectedTemplate(cv.templateId);
     onContinue();
   };
 
-  const handleDelete = async (id: string) => {
-    setDeleting(id);
-    await deleteCV(id);
+  const downloadSavedCV = async (cv: SavedCV) => {
+    setDownloadingCV(cv.id);
+    try { await onDownloadSaved(cv.cvData, cv.templateId, cv.name); }
+    finally { setDownloadingCV(null); }
+  };
+
+  const copyText=async(value:string)=>{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(value);return;}const area=document.createElement('textarea');area.value=value;area.setAttribute('readonly','');area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();const successful=document.execCommand('copy');document.body.removeChild(area);if(!successful)throw new Error('Copy was blocked by the browser');};
+  const shareSavedCV=async(cv:SavedCV)=>{setSharingCV(cv.id);try{const result=await api.post<{path:string}>(`/cvs/${cv.id}/share`,{});const link=new URL(result.path,window.location.origin).toString();setShareLink(link);setShareName(cv.name);setCopied(false);try{await copyText(link);setCopied(true);}catch{}}finally{setSharingCV(null);}};
+  const copyShareLink=async()=>{try{await copyText(shareLink);setCopied(true);window.setTimeout(()=>setCopied(false),1800);}catch{const input=Array.from(document.querySelectorAll<HTMLInputElement>('input[readonly]')).find((item)=>item.value===shareLink);input?.focus();input?.select();}};
+
+  const openDeleteModal = (cv: SavedCV) => {
+    setCvToDelete(cv);
+    setConfirmText('');
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!cvToDelete || confirmText !== cvToDelete.name) return;
+    setDeleting(cvToDelete.id);
+    setDeleteModalOpen(false);
+    await deleteCV(cvToDelete.id);
     setDeleting(null);
+    setCvToDelete(null);
+    setConfirmText('');
   };
 
   const startSample = () => {
+    localStorage.removeItem('career_active_saved_cv');
     loadSampleData();
     onContinue();
   };
+  const startNewCV=()=>{localStorage.removeItem('career_active_saved_cv');onContinue();};
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-gradient-to-r from-navy via-[#16335a] to-teal shadow-lg shadow-navy/25">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-2 sm:gap-3">
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="relative shrink-0">
-              <div className="absolute inset-0 rounded-2xl bg-white/30 blur-lg" />
-              <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/30 backdrop-blur shadow-lg">
-                <Logo size={22} className="text-white" />
-              </div>
-            </div>
-            <div className="leading-tight min-w-0">
-              <h1 className="font-display text-lg sm:text-xl font-extrabold tracking-tight text-white truncate">
-                My Dashboard
-              </h1>
-              <p className="hidden sm:block text-xs text-white/70 truncate">Your resumes at a glance</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <Button
-              onClick={onDownload}
-              disabled={isDownloading}
-              size="sm"
-              className="bg-white text-navy font-semibold shadow-lg shadow-black/10 hover:bg-white/90 hover:shadow-xl transition-all shrink-0"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">{isDownloading ? 'Generating...' : 'Download PDF'}</span>
-              <span className="sm:hidden">{isDownloading ? '...' : 'PDF'}</span>
-            </Button>
-            <ThemeToggle variant="dark" />
-            <UserMenu />
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-6 space-y-6">
+      <main className="container mx-auto px-4 py-5 space-y-5">
         {/* Hero */}
-        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-navy via-[#0e2a52] to-teal/85 shadow-xl shadow-navy/25 ring-1 ring-white/10">
-          <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-accent/20 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-teal/25 blur-3xl" />
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+        <section className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 shadow-lg shadow-slate-900/20 ring-1 ring-white/10">
+          <div className="pointer-events-none absolute -top-12 -right-8 h-40 w-40 rounded-full bg-blue-500/15 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-14 -left-8 h-40 w-40 rounded-full bg-indigo-500/20 blur-3xl" />
 
-          <div className="relative p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-4 sm:gap-5 min-w-0">
-              <Avatar className="h-16 w-16 sm:h-20 sm:w-20 ring-4 ring-white/20 shrink-0">
-                <AvatarFallback className="bg-white/15 text-white text-xl sm:text-2xl font-bold">{initials}</AvatarFallback>
+          <div className="relative px-5 py-5 sm:px-7 sm:py-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <Avatar className="h-12 w-12 ring-2 ring-white/20 shrink-0">
+                <AvatarFallback className="bg-white/15 text-white text-sm font-semibold">{initials}</AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <p className="text-white/65 text-xs sm:text-sm flex items-center gap-2">
-                  <CalendarDays className="w-4 h-4 text-teal-300" />
+                <p className="text-white/55 text-[11px] flex items-center gap-1.5">
+                  <CalendarDays className="w-3 h-3 text-teal-300" />
                   {today}
                 </p>
-                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white mt-1 truncate">
-                  {greeting}, <span className="bg-gradient-to-r from-teal-300 to-cyan-200 bg-clip-text text-transparent">{firstName}</span>
+                <h2 className="text-lg sm:text-xl font-extrabold tracking-tight text-white mt-0.5 truncate">
+                  {greeting}, <span className="bg-gradient-to-r from-blue-300 to-indigo-200 bg-clip-text text-transparent">{firstName}</span>
                 </h2>
-                <p className="text-white/75 text-sm mt-1.5">Everything you need to craft your next great resume.</p>
+                <p className="text-white/60 text-xs mt-0.5 hidden sm:block">Craft your next great resume</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-6 shrink-0">
-              <div className="relative h-32 w-32">
+            <div className="flex items-center gap-4 shrink-0">
+              <div className="relative h-20 w-20">
                 <svg className="h-full w-full -rotate-90">
                   <defs>
                     <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#5eead4" />
-                      <stop offset="100%" stopColor="#14b8a6" />
+                      <stop offset="0%" stopColor="#60a5fa" />
+                      <stop offset="100%" stopColor="#818cf8" />
                     </linearGradient>
                   </defs>
-                  <circle cx="64" cy="64" r={ringR} stroke="rgba(255,255,255,0.15)" strokeWidth={ringStroke} fill="none" />
+                  <circle cx="40" cy="40" r={ringR} stroke="rgba(255,255,255,0.12)" strokeWidth={ringStroke} fill="none" />
                   <circle
-                    cx="64" cy="64" r={ringR}
+                    cx="40" cy="40" r={ringR}
                     stroke="url(#ringGrad)" strokeWidth={ringStroke} fill="none"
                     strokeLinecap="round"
                     strokeDasharray={ringCirc}
@@ -192,17 +187,17 @@ const CandidateOverview: React.FC<CandidateOverviewProps> = ({ onContinue, onDow
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-extrabold text-white">{sections.pct}%</span>
-                  <span className="text-[10px] text-white/70 uppercase tracking-widest mt-0.5">readiness</span>
+                  <span className="text-base font-extrabold text-white leading-none">{sections.pct}%</span>
+                  <span className="text-[8px] text-white/60 uppercase tracking-wider mt-0.5">done</span>
                 </div>
               </div>
-              <div className="hidden sm:flex flex-col gap-2">
-                <Button onClick={onContinue} className="bg-white text-navy font-semibold shadow-lg shadow-black/20 hover:bg-white/90">
-                  <PlayCircle className="w-4 h-4 mr-2" />
+              <div className="hidden sm:flex flex-col gap-1.5">
+                <Button onClick={() => onContinue()} size="sm" className="h-8 bg-white text-navy text-xs font-semibold shadow hover:bg-white/90 px-3">
+                  <PlayCircle className="w-3.5 h-3.5 mr-1.5" />
                   Continue editing
                 </Button>
-                <Button variant="outline" onClick={() => navigate('/letters')} className="border-white/30 bg-white/5 text-white hover:text-white hover:bg-white/15 hover:border-white/40">
-                  <FileSignature className="w-4 h-4 mr-2" />
+                <Button variant="outline" size="sm" onClick={() => onWorkspaceNavigate ? onWorkspaceNavigate('letters') : navigate('/letters')} className="h-8 border-white/25 bg-white/5 text-white text-xs hover:text-white hover:bg-white/10 px-3">
+                  <FileSignature className="w-3.5 h-3.5 mr-1.5" />
                   Cover Letters
                 </Button>
               </div>
@@ -210,143 +205,241 @@ const CandidateOverview: React.FC<CandidateOverviewProps> = ({ onContinue, onDow
           </div>
         </section>
 
+        <section className="rounded-2xl border border-border/60 bg-card p-3 shadow-sm">
+          <div className="grid gap-2 md:grid-cols-4">
+            {[
+              { n: '01', title: 'Build', copy: 'Complete your story', action: () => onContinue('personal'), done: sections.pct >= 70 },
+              { n: '02', title: 'Tailor', copy: 'Match the target role', action: () => onContinue('skills'), done: cvData.skills.length >= 5 },
+              { n: '03', title: 'Check', copy: 'Run ATS analysis', action: () => onContinue('ats'), done: false },
+              { n: '04', title: 'Apply', copy: 'Export CV & letter', action: () => onWorkspaceNavigate ? onWorkspaceNavigate('letters') : navigate('/letters'), done: false },
+            ].map((step) => (
+              <button key={step.n} onClick={step.action} className="group flex items-center gap-3 rounded-xl border border-transparent p-3 text-left transition hover:border-cyan-300/40 hover:bg-cyan-50/60 dark:hover:bg-cyan-950/20">
+                <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-[10px] font-black ${step.done ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-900 text-cyan-300 dark:bg-cyan-300 dark:text-slate-950'}`}>{step.done ? <CheckCircle2 className="h-4 w-4" /> : step.n}</span>
+                <span><b className="block text-xs">{step.title}</b><small className="text-[10px] text-muted-foreground">{step.copy}</small></span>
+                <ArrowRight className="ml-auto h-3.5 w-3.5 text-muted-foreground transition group-hover:translate-x-0.5" />
+              </button>
+            ))}
+          </div>
+        </section>
+
         {/* Stat cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={TrendingUp} label="Resume readiness" value={`${sections.pct}%`} gradient="from-accent to-teal" />
-          <StatCard icon={CheckCircle2} label="Sections complete" value={`${sections.filled}/${sections.total}`} gradient="from-emerald-500 to-teal" />
-          <StatCard icon={FolderKanban} label="Saved CVs" value={cvsLoading ? '…' : String(savedCVs.length)} gradient="from-navy to-[#16335a]" />
-          <StatCard icon={LayoutTemplate} label="Active template" value={selectedTemplate} gradient="from-cyan-500 to-teal" />
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {[
+            { icon: TrendingUp, label: 'Readiness', value: `${sections.pct}%`, gradient: 'from-blue-500 to-indigo-600' },
+            { icon: CheckCircle2, label: 'Sections', value: `${sections.filled}/${sections.total}`, gradient: 'from-emerald-500 to-blue-500' },
+            { icon: FolderKanban, label: 'Saved CVs', value: cvsLoading ? '…' : String(savedCVs.length), gradient: 'from-slate-700 to-slate-800' },
+            { icon: LayoutTemplate, label: 'Template', value: selectedTemplate, gradient: 'from-blue-500 to-cyan-500' },
+          ].map((card) => (
+            <div key={card.label} className="rounded-lg border border-border/50 bg-card p-2.5 shadow-sm ring-1 ring-border/20 transition-all hover:border-accent/20 hover:shadow-md">
+              <div className="flex items-center gap-2">
+                <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gradient-to-br ${card.gradient} shadow-sm`}>
+                  <card.icon className="h-3.5 w-3.5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold leading-none text-foreground">{card.value}</p>
+                  <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{card.label}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          {/* Recent CVs */}
-          <section className="lg:col-span-2 bg-card rounded-2xl border border-border/60 shadow-card overflow-hidden ring-1 ring-border/30">
-            <div className="px-5 py-4 border-b border-border/60 flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent/25 to-accent/5 ring-1 ring-accent/30">
-                  <FolderKanban className="w-5 h-5 text-accent" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+          {/* CVs */}
+          <section id="saved-cvs" className="lg:col-span-2 bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden ring-1 ring-border/20 scroll-mt-20">
+            <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10">
+                  <FolderKanban className="w-4 h-4 text-accent" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-foreground tracking-tight">Your CVs</h3>
-                  <p className="text-xs text-muted-foreground">Saved resumes you can pick up anytime</p>
+                  <h3 className="text-sm font-semibold text-foreground">Your CVs</h3>
+                  <p className="text-[11px] text-muted-foreground">Pick up where you left off</p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={onContinue} className="border-border/60">
-                <PlusCircle className="w-4 h-4 mr-1.5 text-accent" />
+              <Button variant="outline" size="sm" onClick={startNewCV} className="h-7 text-xs border-border/60 px-2.5">
+                <PlusCircle className="w-3.5 h-3.5 mr-1 text-accent" />
                 New CV
               </Button>
             </div>
 
-            <div className="p-5 space-y-2.5">
+            <div className="p-4">
               {cvsLoading ? (
-                <div className="py-10 flex items-center justify-center text-muted-foreground">
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading your CVs…
+                <div className="py-8 flex items-center justify-center text-muted-foreground text-xs">
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading your CVs…
                 </div>
               ) : savedCVs.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/60 ring-1 ring-border/40">
-                    <FolderKanban className="w-7 h-7 text-muted-foreground/50" />
+                <div className="text-center py-10">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-muted/60 ring-1 ring-border/40">
+                    <FolderKanban className="w-5 h-5 text-muted-foreground/40" />
                   </div>
-                  <p className="mt-4 text-sm font-semibold text-foreground">No saved CVs yet</p>
-                  <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
-                    Build your resume and hit “Save CV” — it will show up here so you can jump back in anytime.
+                  <p className="mt-3 text-sm font-medium text-foreground">No saved CVs yet</p>
+                  <p className="text-[11px] text-muted-foreground mt-1 max-w-xs mx-auto">
+                    Build your resume and hit "Save CV" to see it here.
                   </p>
-                  <div className="mt-5 flex items-center justify-center gap-2 flex-wrap">
-                    <Button onClick={startSample} className="bg-gradient-to-r from-accent to-teal text-white shadow-lg shadow-accent/25">
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Start with sample data
+                  <div className="mt-3.5 flex items-center justify-center gap-2">
+                    <Button onClick={startSample} size="sm" className="h-8 text-xs bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow shadow-blue-500/20 px-3">
+                      <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                      Load sample
                     </Button>
-                    <Button variant="outline" onClick={onContinue}>Start from scratch</Button>
+                    <Button variant="outline" size="sm" onClick={startNewCV} className="h-8 text-xs px-3">
+                      Start from scratch
+                    </Button>
                   </div>
                 </div>
               ) : (
-                savedCVs.map((cv) => (
-                  <div key={cv.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/50 px-4 py-3 hover:bg-background/80 hover:border-accent/30 transition-all">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-navy/10 to-teal/10 ring-1 ring-border/60">
-                        <FileText className="w-5 h-5 text-accent" />
+                <div className="space-y-1.5">
+                  {savedCVs.map((cv) => (
+                    <div key={cv.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-background/40 px-3.5 py-2.5 hover:bg-background/70 hover:border-accent/20 transition-all group">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/8 ring-1 ring-accent/15">
+                          <FileText className="w-4 h-4 text-accent" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{cv.name}</p>
+                          <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <LayoutTemplate className="w-3 h-3" />
+                            <span className="capitalize">{cv.templateId}</span>
+                            <span className="text-border/50">·</span>
+                            <Clock className="w-3 h-3" />
+                            {formatDistanceToNow(new Date(cv.updatedAt), { addSuffix: true })}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{cv.name}</p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                          <LayoutTemplate className="w-3 h-3" />
-                          <span className="capitalize">{cv.template_id}</span>
-                          <span className="text-border/70">•</span>
-                          <Clock className="w-3 h-3" />
-                          {formatDistanceToNow(new Date(cv.updated_at), { addSuffix: true })}
-                        </p>
+                      <div className="flex items-center gap-1 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
+                        <Button size="sm" variant="ghost" onClick={() => loadCV(cv)} className="h-7 text-xs px-2 text-accent hover:text-accent hover:bg-accent/5">
+                          <PlayCircle className="w-3.5 h-3.5 mr-1" />
+                          Load
+                        </Button>
+                        <Button size="sm" variant="ghost" disabled={downloadingCV === cv.id} onClick={() => downloadSavedCV(cv)} className="h-7 text-xs px-2 text-accent hover:text-accent hover:bg-accent/5">
+                          {downloadingCV === cv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                          <span className="sr-only sm:not-sr-only sm:ml-1">Download</span>
+                        </Button>
+                        <Button size="sm" variant="ghost" disabled={sharingCV===cv.id} onClick={()=>shareSavedCV(cv)} className="h-7 px-2 text-xs text-accent hover:bg-accent/5 hover:text-accent" title="Share CV as PDF">{sharingCV===cv.id?<Loader2 className="h-3.5 w-3.5 animate-spin"/>:<Share2 className="h-3.5 w-3.5"/>}<span className="sr-only sm:not-sr-only sm:ml-1">Share</span></Button>
+                        <Button size="icon" variant="ghost" disabled={deleting === cv.id} onClick={() => openDeleteModal(cv)} className="h-7 w-7 text-destructive/60 hover:text-destructive hover:bg-destructive/5">
+                          {deleting === cv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Button size="sm" variant="outline" onClick={() => loadCV(cv)} className="border-border/60">
-                        <PlayCircle className="w-3.5 h-3.5 mr-1 text-accent" />
-                        Load
-                      </Button>
-                      <Button size="icon" variant="ghost" disabled={deleting === cv.id} onClick={() => handleDelete(cv.id)} className="text-destructive hover:bg-destructive/10">
-                        {deleting === cv.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                      </Button>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
           </section>
 
-          {/* Side column */}
-          <div className="space-y-6">
-            {/* Quick actions */}
-            <section className="bg-card rounded-2xl border border-border/60 shadow-card overflow-hidden ring-1 ring-border/30">
-              <div className="px-5 py-4 border-b border-border/60 flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent/25 to-accent/5 ring-1 ring-accent/30">
-                  <Briefcase className="w-5 h-5 text-accent" />
+          {/* Side */}
+          <div className="space-y-4">
+            <section className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden ring-1 ring-border/20">
+              <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2.5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10">
+                  <Briefcase className="w-4 h-4 text-accent" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-foreground tracking-tight">Quick actions</h3>
-                  <p className="text-xs text-muted-foreground">Jump straight into work</p>
+                  <h3 className="text-sm font-semibold text-foreground">Quick actions</h3>
+                  <p className="text-[11px] text-muted-foreground">Jump into work</p>
                 </div>
               </div>
-              <div className="p-4 space-y-2.5">
-                <Button onClick={onContinue} className="w-full justify-between bg-gradient-to-r from-accent to-teal text-white shadow-lg shadow-accent/25 hover:brightness-105">
-                  Continue editing
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" onClick={() => navigate('/letters')} className="w-full justify-between border-border/60">
-                  Cover Letters
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" onClick={onDownload} disabled={isDownloading} className="w-full border-border/60">
-                  <span className="flex items-center gap-2">
-                    {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-accent" />}
-                    Download PDF
-                  </span>
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" onClick={startSample} className="w-full text-muted-foreground hover:text-foreground">
-                  <span className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-accent" />
-                    Load sample CV
-                  </span>
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
+              <div className="p-3 space-y-1">
+                {[
+                  { label: 'Continue editing', icon: PlayCircle, onClick: () => onContinue(), accent: true },
+                  { label: 'Cover Letters', icon: FileSignature, onClick: () => onWorkspaceNavigate ? onWorkspaceNavigate('letters') : navigate('/letters') },
+                  { label: 'Download PDF', icon: isDownloading ? Loader2 : Download, onClick: onDownload, disabled: isDownloading },
+                  { label: 'Load sample CV', icon: Sparkles, onClick: startSample, ghost: true },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    onClick={item.onClick}
+                    disabled={item.disabled}
+                    className={`w-full flex items-center justify-between rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+                      item.accent
+                        ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-sm shadow-blue-500/20 hover:brightness-105'
+                        : item.ghost
+                        ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                        : 'text-foreground hover:bg-muted/60 border border-border/40 hover:border-accent/20'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <item.icon className={`w-3.5 h-3.5 ${item.accent ? 'text-white' : 'text-accent'} ${item.disabled ? 'animate-spin' : ''}`} />
+                      {item.label}
+                    </span>
+                    <ArrowRight className="w-3.5 h-3.5 opacity-40" />
+                  </button>
+                ))}
               </div>
             </section>
 
-            {/* ATS tip */}
-            <section className="rounded-2xl border border-accent/30 bg-gradient-to-br from-accent/10 to-teal/5 p-5 shadow-card ring-1 ring-accent/20">
-              <div className="flex items-center gap-2 mb-2">
-                <GraduationCap className="w-4 h-4 text-accent" />
-                <h3 className="text-sm font-bold text-foreground tracking-tight">Pro tip</h3>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Most recruiters use ATS software to filter resumes. Fill in the{' '}
-                <span className="text-accent font-medium">ATS Check</span> tab with the job description to score
-                your resume, and match keywords from the posting.
-              </p>
-            </section>
+            <div id="ai-career-coach" className="scroll-mt-24"><AICareerCoach data={cvData} onOpenSection={onContinue} /></div>
           </div>
         </div>
       </main>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={!!shareLink} onOpenChange={(open)=>{if(!open){setShareLink('');setCopied(false);}}}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle className="flex items-center gap-2"><Share2 className="h-5 w-5 text-accent"/>Share {shareName}</DialogTitle><DialogDescription>Anyone with this secure link can open the CV as a PDF without signing in.</DialogDescription></DialogHeader><div className="flex gap-2"><Input value={shareLink} readOnly onFocus={(event)=>event.currentTarget.select()}/><Button onClick={copyShareLink} className="shrink-0">{copied?<Check className="h-4 w-4"/>:<Copy className="h-4 w-4"/>}<span className="ml-2">{copied?'Copied':'Copy'}</span></Button></div><DialogFooter><Button variant="outline" onClick={()=>window.open(shareLink,'_blank','noopener,noreferrer')}>Open PDF link</Button></DialogFooter></DialogContent></Dialog>
+      <Dialog open={deleteModalOpen} onOpenChange={(open) => { if (!open) { setDeleteModalOpen(false); setCvToDelete(null); setConfirmText(''); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-destructive/10">
+                <AlertTriangle className="w-4 h-4 text-destructive" />
+              </div>
+              Delete CV
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              This action cannot be undone. This will permanently delete <span className="font-semibold text-foreground">"{cvToDelete?.name}"</span> and remove all its data.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 py-1">
+            <Label htmlFor="confirm-delete" className="text-xs font-medium">
+              Type <span className="font-bold text-foreground">{cvToDelete?.name}</span> to confirm:
+            </Label>
+            <Input
+              id="confirm-delete"
+              placeholder={cvToDelete?.name || ''}
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              className="h-9 text-sm"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && confirmText === cvToDelete?.name) {
+                  handleConfirmDelete();
+                }
+              }}
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => { setDeleteModalOpen(false); setCvToDelete(null); setConfirmText(''); }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="h-8 text-xs"
+              disabled={confirmText !== cvToDelete?.name || deleting !== null}
+              onClick={handleConfirmDelete}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                  Delete CV
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

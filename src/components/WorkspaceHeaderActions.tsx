@@ -1,0 +1,38 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Bell, Bot, CheckCheck, Headphones, Loader2, MessageCircle, Send, UserRound, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { api } from '@/integrations/api/client';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface Notice { id:string; type:string; title:string; body?:string; link?:string; readAt?:string; createdAt:string; }
+interface Message { id:string; senderId:string; receiverId:string; message:string; readAt?:string; createdAt:string; }
+
+export default function WorkspaceHeaderActions() {
+  const { user } = useAuth();
+  const [notices,setNotices] = useState<Notice[]>([]); const [unread,setUnread] = useState(0);
+  const [notificationsOpen,setNotificationsOpen] = useState(false); const [chatOpen,setChatOpen] = useState(false);
+  const [messages,setMessages] = useState<Message[]>([]); const [text,setText] = useState(''); const [sending,setSending] = useState(false); const [loadingChat,setLoadingChat] = useState(false);
+  const [chatMode,setChatMode]=useState<'bot'|'agent'|null>(null); const sessionStartedAt=useRef(0);
+  const endRef = useRef<HTMLDivElement>(null);
+  const loadNotices = useCallback(async () => { try { const result=await api.get<{notifications:Notice[];unread:number}>('/notifications'); setNotices(result.notifications); setUnread(result.unread); } catch {} },[]);
+  const loadChat = useCallback(async () => { setLoadingChat(true); try { const result=await api.get<{messages:Message[]}>('/support'); setMessages(result.messages.filter((item)=>new Date(item.createdAt).getTime()>=sessionStartedAt.current)); await loadNotices(); } finally { setLoadingChat(false); } },[loadNotices]);
+  useEffect(() => { loadNotices(); const timer=window.setInterval(loadNotices,15000); return () => window.clearInterval(timer); },[loadNotices]);
+  useEffect(() => { if (!chatOpen) return; loadChat(); const timer=window.setInterval(loadChat,10000); return () => window.clearInterval(timer); },[chatOpen,loadChat]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); },[messages]);
+  const markAll = async () => { await api.put('/notifications/read-all'); setNotices((items)=>items.map((item)=>({...item,readAt:item.readAt||new Date().toISOString()}))); setUnread(0); };
+  const openFreshChat=()=>{const unreadSupport=notices.filter((item)=>item.type==='support'&&!item.readAt);if(unreadSupport.length){sessionStartedAt.current=Math.max(0,Math.min(...unreadSupport.map((item)=>new Date(item.createdAt).getTime()))-5000);setChatMode('agent');}else{sessionStartedAt.current=Date.now()-1000;setChatMode(null);}setMessages([]);setText('');setChatOpen(true);};
+  const openSupportNotice=async(item:Notice)=>{if(!item.readAt)await api.put(`/notifications/${item.id}`);sessionStartedAt.current=Math.max(0,new Date(item.createdAt).getTime()-5000);setMessages([]);setText('');setChatMode('agent');setNotificationsOpen(false);setChatOpen(true);await loadNotices();};
+  const send = async () => { const message=text.trim(); if (!message||!chatMode) return; setSending(true); try { const created=await api.post<Message&{botReply?:Message|null}>('/support',{message,mode:chatMode}); setMessages((items)=>[...items,created,...(created.botReply?[created.botReply]:[])]); setText(''); } finally { setSending(false); } };
+  const supportUnread = notices.filter((item)=>item.type==='support'&&!item.readAt).length;
+  return <>
+    <div className="workspace-header-actions">
+      <button aria-label="Notifications" onClick={()=>setNotificationsOpen(true)}><Bell />{unread>0&&<span>{unread>9?'9+':unread}</span>}</button>
+    </div>
+    {typeof document!=='undefined'&&createPortal(<><button className="workspace-support-fab" aria-label="Open support chat" title="Chat with support" onClick={openFreshChat}><Headphones /><span className="workspace-support-fab-label">Support</span>{supportUnread>0&&<b>{supportUnread>9?'9+':supportUnread}</b>}</button>
+    <Dialog open={notificationsOpen} onOpenChange={setNotificationsOpen}><DialogContent className="workspace-notice-dialog sm:max-w-md"><DialogHeader><DialogTitle>Notifications</DialogTitle><DialogDescription>Updates from CareerCanvas and support.</DialogDescription></DialogHeader><div className="workspace-notice-head"><b>{unread} unread</b>{unread>0&&<button onClick={markAll}><CheckCheck />Mark all read</button>}</div><div className="workspace-notice-list">{notices.length===0?<p>No notifications yet.</p>:notices.map((item)=><button key={item.id} className={!item.readAt?'unread':''} onClick={async()=>{if(item.type==='support'){await openSupportNotice(item);return;}if(!item.readAt){await api.put(`/notifications/${item.id}`);loadNotices();}}}><span>{item.type==='support'?<Headphones/>:<Bell/>}</span><div><b>{item.title}</b>{item.body&&<p>{item.body}</p>}<small>{new Date(item.createdAt).toLocaleString()}</small></div></button>)}</div></DialogContent></Dialog>
+    {chatOpen&&<aside className="support-chat-popover" role="dialog" aria-label="Support chat"><header><div><b>{chatMode==='bot'?'CV Assistant':chatMode==='agent'?'Agent support':'Start a new chat'}</b><p>{chatMode==='bot'?'Get instant CV guidance.':chatMode==='agent'?'Messages go to the superadmin.':'Choose how you would like help.'}</p></div><button aria-label="Close support chat" onClick={()=>setChatOpen(false)}><X/></button></header><div className="support-status"><span/>{chatMode==='bot'?'Assistant online':chatMode==='agent'?'Support inbox':'New private session'} <b>History retained for support</b></div>{!chatMode?<div className="support-mode-picker"><Headphones/><b>How can we help today?</b><p>Each opening starts a clean conversation view. Your complete history remains available to support.</p><button onClick={()=>setChatMode('bot')}><Bot/><span><b>Ask the CV chatbot</b><small>Instant help with wording, ATS, formats and downloads</small></span></button><button onClick={()=>setChatMode('agent')}><UserRound/><span><b>Talk with an agent</b><small>Send your question to the CareerCanvas superadmin</small></span></button></div>:<><div className="support-messages">{loadingChat&&messages.length===0?<Loader2 className="animate-spin"/>:messages.length===0?<div className="support-empty">{chatMode==='bot'?<Bot/>:<Headphones/>}<b>{chatMode==='bot'?'CV Assistant is ready':'Start your agent conversation'}</b><p>{chatMode==='bot'?'Ask about templates, sections, ATS matching, saving or sharing.':'Describe what you need help with and the superadmin will reply.'}</p></div>:messages.map((item)=><div key={item.id} className={item.senderId===user?.id?'mine':'theirs'}><p>{item.message}</p><small>{new Date(item.createdAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</small></div>)}<div ref={endRef}/></div><div className="support-compose"><button className="support-mode-back" onClick={()=>{setChatMode(null);setMessages([]);}} aria-label="Change support type">‹</button><Textarea value={text} onChange={(event)=>setText(event.target.value.slice(0,4000))} onKeyDown={(event)=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}}} placeholder={chatMode==='bot'?'Ask the CV Assistant…':'Write a message to support…'} rows={2}/><Button onClick={send} disabled={sending||!text.trim()}>{sending?<Loader2 className="animate-spin"/>:<Send/>}</Button></div></>}</aside>}</>,document.body)}
+  </>;
+}

@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Loader2 } from 'lucide-react';
 
-const AdminRedirect: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const AdminRedirect: React.FC<{ children: React.ReactNode; to?: string }> = ({ children, to = '/admin' }) => {
   const { isAdmin, loading } = useUserRole();
 
   if (loading) {
@@ -15,7 +15,7 @@ const AdminRedirect: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   }
 
   if (isAdmin) {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to={to} replace />;
   }
 
   return <>{children}</>;

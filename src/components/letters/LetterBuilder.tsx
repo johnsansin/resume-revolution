@@ -1,17 +1,14 @@
 import React, { useState } from 'react';
 import { useCVContext } from '@/contexts/CVContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Logo } from '@/components/ui/logo';
 import { Badge } from '@/components/ui/badge';
-import ThemeToggle from '@/components/ThemeToggle';
 import { pdf } from '@react-pdf/renderer';
 import { saveAs } from 'file-saver';
-import { ArrowLeft, Download, FileSignature, Mail, Sparkles, Building2, User, Calendar } from 'lucide-react';
+import { Download, FileSignature, Mail, Sparkles, Building2, User, Calendar } from 'lucide-react';
 import { LetterData, LetterStyle } from '@/types/letter';
 import { defaultLetterData, buildLetterFromCV } from '@/data/defaultLetter';
 import LetterPdf from './templates/LetterTemplates';
@@ -20,7 +17,6 @@ import LetterPreview from './LetterPreview';
 const LetterBuilder: React.FC = () => {
   const { cvData } = useCVContext();
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [letter, setLetter] = useState<LetterData>(defaultLetterData);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -53,51 +49,12 @@ const LetterBuilder: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/70 to-transparent" />
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="relative shrink-0">
-              <div className="absolute inset-0 rounded-2xl bg-accent/40 blur-lg" />
-              <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-navy to-teal ring-1 ring-accent/40 shadow-lg">
-                <Logo size={22} className="text-white" />
-              </div>
-            </div>
-            <div className="leading-tight min-w-0">
-              <h1 className="font-display text-xl font-extrabold tracking-tight bg-gradient-to-r from-foreground to-accent bg-clip-text text-transparent">
-                Cover & Motivation Letters
-              </h1>
-              <p className="text-xs text-muted-foreground truncate">One editor, two styles — export to PDF</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            <Badge variant="secondary" className="hidden sm:inline-flex border-border/60">
-              <FileSignature className="w-3.5 h-3.5 mr-1.5" />
-              {letter.style === 'cover' ? 'Cover Letter' : 'Motivation Letter'}
-            </Badge>
-            <Button variant="outline" size="sm" onClick={() => fillFromCV('cover')} className="border-border/60">
-              <Mail className="w-4 h-4 mr-2 text-accent" />
-              Fill from my CV
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft className="w-4 h-4 mr-2 text-accent" />
-              CV Builder
-            </Button>
-            <Button
-              onClick={handleDownload}
-              disabled={isDownloading}
-              size="sm"
-              className="bg-gradient-to-r from-accent to-teal text-white shadow-lg shadow-accent/25 hover:shadow-accent/40 hover:brightness-110 transition-all"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              {isDownloading ? 'Generating...' : 'Download PDF'}
-            </Button>
-            <ThemeToggle variant="light" />
-          </div>
-        </div>
-      </header>
-
       <main className="container mx-auto px-4 py-6">
+        <div className="career-letter-tools">
+          <Badge variant="secondary"><FileSignature />{letter.style === 'cover' ? 'Cover Letter' : 'Motivation Letter'}</Badge>
+          <Button variant="outline" onClick={() => fillFromCV('cover')}><Mail />Fill from my CV</Button>
+          <Button onClick={handleDownload} disabled={isDownloading}><Download />{isDownloading ? 'Generating…' : 'Download PDF'}</Button>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           {/* Form */}
           <div className="bg-card rounded-2xl border border-border/60 shadow-card overflow-hidden ring-1 ring-border/30">

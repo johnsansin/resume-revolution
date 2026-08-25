@@ -1,20 +1,55 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useCVContext } from '@/contexts/CVContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import DatePicker from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User, Mail, Phone, MapPin, Globe, Linkedin, FileText, Briefcase } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Globe, Linkedin, FileText, Briefcase, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import PhotoUpload from './PhotoUpload';
 
 const PersonalInfoForm: React.FC = () => {
-  const { cvData, updatePersonal } = useCVContext();
+  const { cvData, updatePersonal, setCVData } = useCVContext();
+  const { user } = useAuth();
   const { personal } = cvData;
+
+  useEffect(() => {
+    if (!user) return;
+    const reusable = user.profileData || {};
+    setCVData((current) => ({
+      ...current,
+      personal: {
+        ...current.personal,
+        fullName: current.personal.fullName || user.displayName || '',
+        email: current.personal.email || user.email,
+        phone: current.personal.phone || user.phone || '',
+        jobTitle: current.personal.jobTitle || reusable.jobTitle || '',
+        location: current.personal.location || reusable.location || '',
+        address: current.personal.address || reusable.address || '',
+        website: current.personal.website || reusable.website || '',
+        linkedin: current.personal.linkedin || reusable.linkedin || '',
+        summary: current.personal.summary || reusable.summary || '',
+      },
+    }));
+  }, [user?.id, user?.displayName, user?.email, user?.phone, user?.profileData, setCVData]);
+
+  const useProfileDetails = () => {
+    if (!user) return;
+    const reusable = user.profileData || {};
+    setCVData((current) => ({ ...current, personal: { ...current.personal, ...reusable, fullName: user.displayName || current.personal.fullName, email: user.email, phone: user.phone || current.personal.phone } }));
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <PhotoUpload />
+      {user && (
+        <div className="flex flex-col gap-3 rounded-xl border border-cyan-200 bg-cyan-50/70 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-cyan-900 dark:bg-cyan-950/30">
+          <div className="flex items-start gap-2.5"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-700 dark:text-cyan-300" /><div><p className="text-xs font-bold text-cyan-900 dark:text-cyan-100">Reusable profile details</p><p className="mt-0.5 text-[11px] text-cyan-800/70 dark:text-cyan-300/70">Name, sign-in email and mobile are prefilled from Account Settings. CV fields remain editable.</p></div></div>
+          <Button type="button" variant="outline" size="sm" onClick={useProfileDetails} className="h-8 shrink-0 border-cyan-300 bg-white text-[11px] text-cyan-900 hover:bg-cyan-100 dark:bg-cyan-950 dark:text-cyan-100"><RefreshCw className="mr-1.5 h-3.5 w-3.5" />Use profile details</Button>
+        </div>
+      )}
+      <PhotoUpload value={personal.photo || ''} onChange={(url) => updatePersonal('photo', url)} />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
           <Label htmlFor="fullName" className="flex items-center gap-2 text-foreground font-medium">

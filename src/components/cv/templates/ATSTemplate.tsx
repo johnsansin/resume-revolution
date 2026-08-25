@@ -12,9 +12,11 @@ const formatDate = (date: string) => {
 
 const styles = StyleSheet.create({
   page: { fontFamily: 'Helvetica', fontSize: 10, color: '#000', padding: 36, lineHeight: 1.3 },
-  name: { fontSize: 20, fontWeight: 'bold', marginBottom: 2 },
-  title: { fontSize: 11, marginBottom: 6 },
-  contact: { fontSize: 9, marginBottom: 4 },
+  name: { fontSize: 20, fontWeight: 'bold', lineHeight: 1.2, marginBottom: 3 },
+  title: { fontSize: 11, lineHeight: 1.35, marginBottom: 7 },
+  contactBlock: { marginBottom: 5 },
+  contact: { fontSize: 9, lineHeight: 1.45, marginBottom: 2 },
+  address: { fontSize: 9, lineHeight: 1.45 },
   section: { marginTop: 12 },
   sectionTitle: { fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase', borderBottomWidth: 1, borderBottomColor: '#999', paddingBottom: 2, marginBottom: 6, letterSpacing: 0.5 },
   entry: { marginBottom: 8 },
@@ -31,14 +33,21 @@ const styles = StyleSheet.create({
 
 export const ATSTemplate: React.FC<{ data: CVData; showPhoto?: boolean }> = ({ data }) => {
   const p = data.personal;
-  const contactParts = [p.email, p.phone, p.location, p.website, p.linkedin, p.address].filter(Boolean);
+  const primaryContact = [p.email, p.phone, p.location].filter(Boolean).join('  |  ');
+  const onlineContact = [p.website, p.linkedin].filter(Boolean).join('  |  ');
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         <Text style={styles.name}>{p.fullName || 'Your Name'}</Text>
         <Text style={styles.title}>{p.jobTitle || 'Professional Title'}</Text>
-        {contactParts.length > 0 && <Text style={styles.contact}>{contactParts.join('  |  ')}</Text>}
+        {(primaryContact || onlineContact || p.address) && (
+          <View style={styles.contactBlock}>
+            {primaryContact && <Text style={styles.contact}>{primaryContact}</Text>}
+            {onlineContact && <Text style={styles.contact}>{onlineContact}</Text>}
+            {p.address && <Text style={styles.address}>{p.address}</Text>}
+          </View>
+        )}
 
         {p.summary && (
           <View style={styles.section}>

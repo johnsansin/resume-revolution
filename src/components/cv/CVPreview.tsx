@@ -1,5 +1,6 @@
 import React from 'react';
 import { CVData, TemplateId } from '@/types/cv';
+import { templateCatalog } from '@/lib/templateCatalog';
 
 const formatDate = (date: string) => {
   if (!date) return '';
@@ -439,28 +440,25 @@ const createPreview = (config: {
   };
 };
 
-// Curated preview components
-const previewComponents: Record<TemplateId, React.FC<{ data: CVData; showPhoto?: boolean }>> = {
+const generatedPreviews = Object.fromEntries(
+  templateCatalog
+    .filter((template) => !['europass','ats','photo-modern','photo-classic','photo-creative'].includes(template.id))
+    .map((template) => [template.id, createPreview({
+      bgColor: template.background,
+      textColor: template.text,
+      accentColor: template.accent,
+      sidebarBg: template.layout === 'sidebar' ? template.accent : undefined,
+      headerBg: template.layout === 'header' ? template.accent : undefined,
+    })]),
+);
+
+const previewComponents: Record<string, React.FC<{ data: CVData; showPhoto?: boolean }>> = {
   europass: EuropassPreview,
   ats: ATSPreview,
-  classic: createPreview({ bgColor: '#fff', textColor: '#333', accentColor: '#1a365d' }),
-  modern: createPreview({ bgColor: '#fff', textColor: '#333', accentColor: '#3182ce', sidebarBg: '#1a365d' }),
-  minimal: createPreview({ bgColor: '#fff', textColor: '#1a1a1a', accentColor: '#1a1a1a' }),
-  creative: createPreview({ bgColor: '#fff', textColor: '#2d3748', accentColor: '#319795', headerBg: '#319795' }),
-  professional: createPreview({ bgColor: '#fff', textColor: '#2d3748', accentColor: '#2b6cb0' }),
-  executive: createPreview({ bgColor: '#fff', textColor: '#1a1a1a', accentColor: '#c9a227' }),
-  tech: createPreview({ bgColor: '#0d1117', textColor: '#c9d1d9', accentColor: '#58a6ff' }),
-  compact: createPreview({ bgColor: '#fff', textColor: '#333', accentColor: '#2563eb' }),
-  corporate: createPreview({ bgColor: '#fff', textColor: '#2d3748', accentColor: '#1e3a5f', sidebarBg: '#1e3a5f' }),
-  academic: createPreview({ bgColor: '#fff', textColor: '#2d3748', accentColor: '#2c5282' }),
-  startup: createPreview({ bgColor: '#fff', textColor: '#2d3748', accentColor: '#6b46c1', sidebarBg: '#6b46c1' }),
-  consultant: createPreview({ bgColor: '#fff', textColor: '#2d3748', accentColor: '#2f855a', sidebarBg: '#2f855a' }),
-  finance: createPreview({ bgColor: '#fff', textColor: '#2d3748', accentColor: '#1a365d' }),
-  healthcare: createPreview({ bgColor: '#fff', textColor: '#2d3748', accentColor: '#38a169', sidebarBg: '#38a169' }),
-  legal: createPreview({ bgColor: '#fff', textColor: '#2d3748', accentColor: '#742a2a' }),
   'photo-modern': createPreview({ bgColor: '#fff', textColor: '#334155', accentColor: '#0f172a', sidebarBg: '#0f172a', photoSize: 'large' }),
   'photo-classic': createPreview({ bgColor: '#fff', textColor: '#334155', accentColor: '#1a365d', photoSize: 'large' }),
   'photo-creative': createPreview({ bgColor: '#fff', textColor: '#2d3748', accentColor: '#7c3aed', headerBg: '#7c3aed', photoSize: 'large' }),
+  ...generatedPreviews,
 };
 
 interface CVPreviewProps {
@@ -469,8 +467,8 @@ interface CVPreviewProps {
   showPhoto?: boolean;
 }
 
-const CVPreview: React.FC<CVPreviewProps> = ({ data, template, showPhoto = true }) => {
-  const PreviewComponent = previewComponents[template] || previewComponents.classic;
+const CVPreview: React.FC<CVPreviewProps> = React.memo(({ data, template, showPhoto = true }) => {
+  const PreviewComponent = previewComponents[template] || previewComponents.ats;
   
   return (
     <div className="bg-white shadow-xl rounded-lg overflow-hidden" style={{ aspectRatio: '210/297' }}>
@@ -479,6 +477,8 @@ const CVPreview: React.FC<CVPreviewProps> = ({ data, template, showPhoto = true 
       </div>
     </div>
   );
-};
+});
+
+CVPreview.displayName = 'CVPreview';
 
 export default CVPreview;

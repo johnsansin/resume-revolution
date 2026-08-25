@@ -1,5 +1,4 @@
 import React from 'react';
-import { Logo } from '@/components/ui/logo';
 
 const AppLoader: React.FC<{ message?: string }> = ({ message }) => {
   return (
@@ -10,20 +9,23 @@ const AppLoader: React.FC<{ message?: string }> = ({ message }) => {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
 
       <div className="relative flex flex-col items-center">
-        {/* Logo with animated rings */}
-        <div className="relative flex h-28 w-28 items-center justify-center">
-          <div className="absolute inset-0 rounded-full border-2 border-white/10" />
-          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-teal-300 animate-spin" style={{ animationDuration: '1.1s' }} />
-          <div className="absolute inset-2 rounded-full border-2 border-transparent border-b-accent animate-spin" style={{ animationDuration: '1.6s', animationDirection: 'reverse' }} />
-          <div className="absolute inset-4 rounded-full border border-white/10" />
-          <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-white/15 to-white/5 ring-1 ring-white/30 backdrop-blur shadow-2xl shadow-black/20">
-            <Logo size={28} className="text-white" />
+        {/* Three-dimensional CV document mark */}
+        <div className="cv-loader-scene relative h-32 w-32" aria-label="CV Builder is loading" role="status">
+          <div className="cv-loader-shadow" />
+          <div className="cv-loader-page cv-loader-page-back" />
+          <div className="cv-loader-page cv-loader-page-mid" />
+          <div className="cv-loader-page cv-loader-page-front">
+            <span className="cv-loader-fold" />
+            <span className="cv-loader-avatar">CV</span>
+            <span className="cv-loader-line cv-loader-line-one" />
+            <span className="cv-loader-line cv-loader-line-two" />
+            <span className="cv-loader-line cv-loader-line-three" />
           </div>
         </div>
 
         {/* Brand */}
         <h1 className="mt-6 font-display text-2xl font-extrabold tracking-tight text-white">
-          CV Maker
+          CV Builder
         </h1>
         <p className="mt-1.5 text-xs text-white/60 tracking-wide">
           {message || 'Craft a resume that lands interviews'}

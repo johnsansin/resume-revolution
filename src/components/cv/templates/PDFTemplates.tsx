@@ -1,17 +1,9 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import { CVData } from '@/types/cv';
 import { EuropassTemplate } from './EuropassTemplate';
 import { ATSTemplate } from './ATSTemplate';
-
-// Register fonts
-Font.register({
-  family: 'Helvetica',
-  fonts: [
-    { src: 'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff2', fontWeight: 400 },
-    { src: 'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fAZ9hiJ-Ek-_EeA.woff2', fontWeight: 700 },
-  ]
-});
+import { templateCatalog } from '@/lib/templateCatalog';
 
 const formatDate = (date: string) => {
   if (!date) return '';
@@ -662,26 +654,22 @@ export const PhotoClassicTemplate = createGenericTemplate('#1a365d', '#fff', '#3
 // 53. Photo Creative
 export const PhotoCreativeTemplate = createGenericTemplate('#7c3aed', '#fff', '#2d3748', '#7c3aed', 'large');
 
-// Template map for easy access
+const jobTemplates = Object.fromEntries(
+  templateCatalog
+    .filter((template) => !['europass','ats','photo-modern','photo-classic','photo-creative'].includes(template.id))
+    .map((template) => [template.id, createGenericTemplate(
+      template.accent,
+      template.background,
+      template.text,
+      template.layout === 'sidebar' || template.layout === 'header' ? template.accent : undefined,
+    )]),
+);
+
 export const templates = {
   europass: EuropassTemplate,
   ats: ATSTemplate,
-  classic: ClassicTemplate,
-  modern: ModernTemplate,
-  minimal: MinimalTemplate,
-  creative: CreativeTemplate,
-  professional: ProfessionalTemplate,
-  executive: ExecutiveTemplate,
-  tech: TechTemplate,
-  compact: CompactTemplate,
-  corporate: CorporateTemplate,
-  academic: AcademicTemplate,
-  startup: StartupTemplate,
-  consultant: ConsultantTemplate,
-  finance: FinanceTemplate,
-  healthcare: HealthcareTemplate,
-  legal: LegalTemplate,
   'photo-modern': PhotoModernTemplate,
   'photo-classic': PhotoClassicTemplate,
   'photo-creative': PhotoCreativeTemplate,
+  ...jobTemplates,
 };

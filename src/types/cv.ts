@@ -83,27 +83,7 @@ export interface CVData {
   interests?: string[];
 }
 
-export type TemplateId = 
-  | 'classic' 
-  | 'modern' 
-  | 'minimal' 
-  | 'creative' 
-  | 'professional' 
-  | 'executive' 
-  | 'tech' 
-  | 'compact' 
-  | 'corporate'
-  | 'academic'
-  | 'startup'
-  | 'consultant'
-  | 'finance'
-  | 'legal'
-  | 'healthcare'
-  | 'europass'
-  | 'ats'
-  | 'photo-modern'
-  | 'photo-classic'
-  | 'photo-creative';
+export type TemplateId = string;
 
 export interface Template {
   id: TemplateId;

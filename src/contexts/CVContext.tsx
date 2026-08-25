@@ -1,6 +1,21 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { CVData, TemplateId } from '@/types/cv';
+import { templateById } from '@/lib/templateCatalog';
 import { sampleCVData } from '@/data/defaultCV';
+
+const CV_DRAFT_KEY = 'cv_maker_draft';
+const AUTO_SAVE_DELAY = 500;
+
+const generateId = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
 
 interface CVContextType {
   cvData: CVData;
@@ -33,7 +48,10 @@ interface CVContextType {
   removeCertification: (id: string) => void;
   updateInterests: (value: string[]) => void;
   loadSampleData: () => void;
+  loadCVData: (data: CVData, template?: TemplateId) => void;
   clearAllData: () => void;
+  draftStatus: 'saving' | 'saved' | 'offline';
+  lastSavedAt: number | null;
 }
 
 const CVContext = createContext<CVContextType | undefined>(undefined);
@@ -46,297 +64,275 @@ export const useCVContext = () => {
   return context;
 };
 
-const generateId = () => Math.random().toString(36).substr(2, 9);
+function loadDraft(): { cvData: CVData; template: TemplateId; updatedAt?: number } | null {
+  try {
+    const raw = localStorage.getItem(CV_DRAFT_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.cvData && parsed.template) {
+        return parsed;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+function saveDraft(cvData: CVData, template: TemplateId): number | null {
+  try {
+    const updatedAt = Date.now();
+    localStorage.setItem(CV_DRAFT_KEY, JSON.stringify({ version: 2, cvData, template, updatedAt }));
+    return updatedAt;
+  } catch {
+    return null;
+  }
+}
+
+const initialDraft = loadDraft();
 
 export const CVProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [cvData, setCVData] = useState<CVData>(sampleCVData);
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>('modern');
+  const [cvData, setCVData] = useState<CVData>(initialDraft?.cvData || sampleCVData);
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(initialDraft?.template && templateById[initialDraft.template] ? initialDraft.template : 'software-engineer');
   const [showPhoto, setShowPhoto] = useState(true);
+  const [draftStatus, setDraftStatus] = useState<'saving' | 'saved' | 'offline'>(() => typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'saved');
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(initialDraft?.updatedAt || null);
 
-  const updatePersonal = (field: keyof CVData['personal'], value: string) => {
-    setCVData(prev => ({
+  const flushDraft = useCallback(() => {
+    const savedAt = saveDraft(cvData, selectedTemplate);
+    if (savedAt) setLastSavedAt(savedAt);
+    setDraftStatus(typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'saved');
+  }, [cvData, selectedTemplate]);
+
+  // Persist locally during normal edits and every lifecycle exit, including logout/unmount.
+  useEffect(() => {
+    setDraftStatus(typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'saving');
+    const timer = setTimeout(() => {
+      flushDraft();
+    }, AUTO_SAVE_DELAY);
+    const pageHide = () => saveDraft(cvData, selectedTemplate);
+    const visibility = () => { if (document.visibilityState === 'hidden') pageHide(); };
+    const offline = () => { saveDraft(cvData, selectedTemplate); setDraftStatus('offline'); };
+    const online = () => { saveDraft(cvData, selectedTemplate); setDraftStatus('saved'); };
+    window.addEventListener('pagehide', pageHide);
+    window.addEventListener('beforeunload', pageHide);
+    window.addEventListener('offline', offline);
+    window.addEventListener('online', online);
+    document.addEventListener('visibilitychange', visibility);
+    return () => {
+      clearTimeout(timer);
+      saveDraft(cvData, selectedTemplate);
+      window.removeEventListener('pagehide', pageHide);
+      window.removeEventListener('beforeunload', pageHide);
+      window.removeEventListener('offline', offline);
+      window.removeEventListener('online', online);
+      document.removeEventListener('visibilitychange', visibility);
+    };
+  }, [cvData, selectedTemplate, flushDraft]);
+
+  const updatePersonal = useCallback((field: keyof CVData['personal'], value: string) => {
+    setCVData((prev) => ({
       ...prev,
       personal: { ...prev.personal, [field]: value },
     }));
-  };
+  }, []);
 
-  const addExperience = () => {
-    setCVData(prev => ({
+  const addExperience = useCallback(() => {
+    setCVData((prev) => ({
       ...prev,
       experience: [
         ...prev.experience,
-        {
-          id: generateId(),
-          company: '',
-          position: '',
-          startDate: '',
-          endDate: '',
-          current: false,
-          description: '',
-          location: '',
-        },
+        { id: generateId(), company: '', position: '', startDate: '', endDate: '', current: false, description: '', location: '' },
       ],
     }));
-  };
+  }, []);
 
-  const updateExperience = (id: string, field: string, value: string | boolean) => {
-    setCVData(prev => ({
+  const updateExperience = useCallback((id: string, field: string, value: string | boolean) => {
+    setCVData((prev) => ({
       ...prev,
-      experience: prev.experience.map(exp =>
-        exp.id === id ? { ...exp, [field]: value } : exp
-      ),
+      experience: prev.experience.map((exp) => (exp.id === id ? { ...exp, [field]: value } : exp)),
     }));
-  };
+  }, []);
 
-  const removeExperience = (id: string) => {
-    setCVData(prev => ({
+  const removeExperience = useCallback((id: string) => {
+    setCVData((prev) => ({
       ...prev,
-      experience: prev.experience.filter(exp => exp.id !== id),
+      experience: prev.experience.filter((exp) => exp.id !== id),
     }));
-  };
+  }, []);
 
-  const addEducation = () => {
-    setCVData(prev => ({
+  const addEducation = useCallback(() => {
+    setCVData((prev) => ({
       ...prev,
       education: [
         ...prev.education,
-        {
-          id: generateId(),
-          institution: '',
-          degree: '',
-          field: '',
-          startDate: '',
-          endDate: '',
-          gpa: '',
-          description: '',
-        },
+        { id: generateId(), institution: '', degree: '', field: '', startDate: '', endDate: '', gpa: '', description: '' },
       ],
     }));
-  };
+  }, []);
 
-  const updateEducation = (id: string, field: string, value: string) => {
-    setCVData(prev => ({
+  const updateEducation = useCallback((id: string, field: string, value: string) => {
+    setCVData((prev) => ({
       ...prev,
-      education: prev.education.map(edu =>
-        edu.id === id ? { ...edu, [field]: value } : edu
-      ),
+      education: prev.education.map((edu) => (edu.id === id ? { ...edu, [field]: value } : edu)),
     }));
-  };
+  }, []);
 
-  const removeEducation = (id: string) => {
-    setCVData(prev => ({
+  const removeEducation = useCallback((id: string) => {
+    setCVData((prev) => ({
       ...prev,
-      education: prev.education.filter(edu => edu.id !== id),
+      education: prev.education.filter((edu) => edu.id !== id),
     }));
-  };
+  }, []);
 
-  const addSkill = () => {
-    setCVData(prev => ({
+  const addSkill = useCallback(() => {
+    setCVData((prev) => ({
       ...prev,
-      skills: [
-        ...prev.skills,
-        { id: generateId(), name: '', level: 'intermediate' as const },
-      ],
+      skills: [...prev.skills, { id: generateId(), name: '', level: 'intermediate' as const }],
     }));
-  };
+  }, []);
 
-  const updateSkill = (id: string, field: string, value: string) => {
-    setCVData(prev => ({
+  const updateSkill = useCallback((id: string, field: string, value: string) => {
+    setCVData((prev) => ({
       ...prev,
-      skills: prev.skills.map(skill =>
-        skill.id === id ? { ...skill, [field]: value } : skill
-      ),
+      skills: prev.skills.map((skill) => (skill.id === id ? { ...skill, [field]: value } : skill)),
     }));
-  };
+  }, []);
 
-  const removeSkill = (id: string) => {
-    setCVData(prev => ({
+  const removeSkill = useCallback((id: string) => {
+    setCVData((prev) => ({
       ...prev,
-      skills: prev.skills.filter(skill => skill.id !== id),
+      skills: prev.skills.filter((skill) => skill.id !== id),
     }));
-  };
+  }, []);
 
-  const addLanguage = () => {
-    setCVData(prev => ({
+  const addLanguage = useCallback(() => {
+    setCVData((prev) => ({
       ...prev,
-      languages: [
-        ...prev.languages,
-        { id: generateId(), name: '', proficiency: 'conversational' as const },
-      ],
+      languages: [...prev.languages, { id: generateId(), name: '', proficiency: 'conversational' as const }],
     }));
-  };
+  }, []);
 
-  const updateLanguage = (id: string, field: string, value: string) => {
-    setCVData(prev => ({
+  const updateLanguage = useCallback((id: string, field: string, value: string) => {
+    setCVData((prev) => ({
       ...prev,
-      languages: prev.languages.map(lang =>
-        lang.id === id ? { ...lang, [field]: value } : lang
-      ),
+      languages: prev.languages.map((lang) => (lang.id === id ? { ...lang, [field]: value } : lang)),
     }));
-  };
+  }, []);
 
-  const removeLanguage = (id: string) => {
-    setCVData(prev => ({
+  const removeLanguage = useCallback((id: string) => {
+    setCVData((prev) => ({
       ...prev,
-      languages: prev.languages.filter(lang => lang.id !== id),
+      languages: prev.languages.filter((lang) => lang.id !== id),
     }));
-  };
+  }, []);
 
-  const addProject = () => {
-    setCVData(prev => ({
+  const addProject = useCallback(() => {
+    setCVData((prev) => ({
       ...prev,
-      projects: [
-        ...prev.projects,
-        {
-          id: generateId(),
-          name: '',
-          description: '',
-          url: '',
-          technologies: [],
-        },
-      ],
+      projects: [...prev.projects, { id: generateId(), name: '', description: '', url: '', technologies: [] }],
     }));
-  };
+  }, []);
 
-  const updateProject = (id: string, field: string, value: string | string[]) => {
-    setCVData(prev => ({
+  const updateProject = useCallback((id: string, field: string, value: string | string[]) => {
+    setCVData((prev) => ({
       ...prev,
-      projects: prev.projects.map(proj =>
-        proj.id === id ? { ...proj, [field]: value } : proj
-      ),
+      projects: prev.projects.map((proj) => (proj.id === id ? { ...proj, [field]: value } : proj)),
     }));
-  };
+  }, []);
 
-  const removeProject = (id: string) => {
-    setCVData(prev => ({
+  const removeProject = useCallback((id: string) => {
+    setCVData((prev) => ({
       ...prev,
-      projects: prev.projects.filter(proj => proj.id !== id),
+      projects: prev.projects.filter((proj) => proj.id !== id),
     }));
-  };
+  }, []);
 
-  const addDigitalSkill = () => {
-    setCVData(prev => ({
+  const addDigitalSkill = useCallback(() => {
+    setCVData((prev) => ({
       ...prev,
-      digitalSkills: [
-        ...(prev.digitalSkills || []),
-        { id: generateId(), name: '', level: 'independent' as const },
-      ],
+      digitalSkills: [...(prev.digitalSkills || []), { id: generateId(), name: '', level: 'independent' as const }],
     }));
-  };
+  }, []);
 
-  const updateDigitalSkill = (id: string, field: string, value: string) => {
-    setCVData(prev => ({
+  const updateDigitalSkill = useCallback((id: string, field: string, value: string) => {
+    setCVData((prev) => ({
       ...prev,
-      digitalSkills: (prev.digitalSkills || []).map(skill =>
-        skill.id === id ? { ...skill, [field]: value } : skill
-      ),
+      digitalSkills: (prev.digitalSkills || []).map((skill) => (skill.id === id ? { ...skill, [field]: value } : skill)),
     }));
-  };
+  }, []);
 
-  const removeDigitalSkill = (id: string) => {
-    setCVData(prev => ({
+  const removeDigitalSkill = useCallback((id: string) => {
+    setCVData((prev) => ({
       ...prev,
-      digitalSkills: (prev.digitalSkills || []).filter(skill => skill.id !== id),
+      digitalSkills: (prev.digitalSkills || []).filter((skill) => skill.id !== id),
     }));
-  };
+  }, []);
 
-  const addCertification = () => {
-    setCVData(prev => ({
+  const addCertification = useCallback(() => {
+    setCVData((prev) => ({
       ...prev,
-      certifications: [
-        ...(prev.certifications || []),
-        { id: generateId(), name: '', issuer: '', year: '' },
-      ],
+      certifications: [...(prev.certifications || []), { id: generateId(), name: '', issuer: '', year: '' }],
     }));
-  };
+  }, []);
 
-  const updateCertification = (id: string, field: string, value: string) => {
-    setCVData(prev => ({
+  const updateCertification = useCallback((id: string, field: string, value: string) => {
+    setCVData((prev) => ({
       ...prev,
-      certifications: (prev.certifications || []).map(cert =>
-        cert.id === id ? { ...cert, [field]: value } : cert
-      ),
+      certifications: (prev.certifications || []).map((cert) => (cert.id === id ? { ...cert, [field]: value } : cert)),
     }));
-  };
+  }, []);
 
-  const removeCertification = (id: string) => {
-    setCVData(prev => ({
+  const removeCertification = useCallback((id: string) => {
+    setCVData((prev) => ({
       ...prev,
-      certifications: (prev.certifications || []).filter(cert => cert.id !== id),
+      certifications: (prev.certifications || []).filter((cert) => cert.id !== id),
     }));
-  };
+  }, []);
 
-  const updateInterests = (value: string[]) => {
-    setCVData(prev => ({ ...prev, interests: value }));
-  };
+  const updateInterests = useCallback((value: string[]) => {
+    setCVData((prev) => ({ ...prev, interests: value }));
+  }, []);
 
-  const loadSampleData = () => {
+  const loadSampleData = useCallback(() => {
     setCVData(sampleCVData);
-  };
+    setSelectedTemplate('software-engineer');
+  }, []);
 
-  const clearAllData = () => {
-    setCVData({
+  const loadCVData = useCallback((data: CVData, template?: TemplateId) => {
+    setCVData(data);
+    if (template) setSelectedTemplate(templateById[template] ? template : 'software-engineer');
+  }, []);
+
+  const clearAllData = useCallback(() => {
+    const empty: CVData = {
       personal: {
-        fullName: '',
-        email: '',
-        phone: '',
-        location: '',
-        address: '',
-        dateOfBirth: '',
-        nationality: '',
-        gender: '',
-        driverLicense: '',
-        website: '',
-        linkedin: '',
-        summary: '',
-        jobTitle: '',
-        photo: '',
+        fullName: '', email: '', phone: '', location: '', address: '', dateOfBirth: '',
+        nationality: '', gender: '', driverLicense: '', website: '', linkedin: '', summary: '',
+        jobTitle: '', photo: '',
       },
-      experience: [],
-      education: [],
-      skills: [],
-      languages: [],
-      projects: [],
-      digitalSkills: [],
-      certifications: [],
-      interests: [],
-    });
-  };
+      experience: [], education: [], skills: [], languages: [], projects: [],
+      digitalSkills: [], certifications: [], interests: [],
+    };
+    setCVData(empty);
+    setSelectedTemplate('software-engineer');
+    localStorage.removeItem(CV_DRAFT_KEY);
+  }, []);
 
   return (
     <CVContext.Provider
       value={{
-        cvData,
-        setCVData,
-        selectedTemplate,
-        setSelectedTemplate,
-        showPhoto,
-        setShowPhoto,
-        updatePersonal,
-        addExperience,
-        updateExperience,
-        removeExperience,
-        addEducation,
-        updateEducation,
-        removeEducation,
-        addSkill,
-        updateSkill,
-        removeSkill,
-        addLanguage,
-        updateLanguage,
-        removeLanguage,
-        addProject,
-        updateProject,
-        removeProject,
-        addDigitalSkill,
-        updateDigitalSkill,
-        removeDigitalSkill,
-        addCertification,
-        updateCertification,
-        removeCertification,
-        updateInterests,
-        loadSampleData,
-        clearAllData,
+        cvData, setCVData, selectedTemplate, setSelectedTemplate,
+        showPhoto, setShowPhoto,
+        updatePersonal, addExperience, updateExperience, removeExperience,
+        addEducation, updateEducation, removeEducation,
+        addSkill, updateSkill, removeSkill,
+        addLanguage, updateLanguage, removeLanguage,
+        addProject, updateProject, removeProject,
+        addDigitalSkill, updateDigitalSkill, removeDigitalSkill,
+        addCertification, updateCertification, removeCertification,
+        updateInterests, loadSampleData, loadCVData, clearAllData,
+        draftStatus, lastSavedAt,
       }}
     >
       {children}

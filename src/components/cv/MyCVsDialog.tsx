@@ -31,9 +31,11 @@ const MyCVsDialog: React.FC = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const handleLoad = (cvData: CVData, templateId: TemplateId) => {
-    setCVData(cvData);
-    setSelectedTemplate(templateId);
+  const handleLoad = (cv: {id:string;name:string;cvData:CVData;templateId:TemplateId}) => {
+    localStorage.setItem('career_active_saved_cv',JSON.stringify({id:cv.id,name:cv.name}));
+    window.dispatchEvent(new Event('career:active-cv'));
+    setCVData(cv.cvData);
+    setSelectedTemplate(cv.templateId);
     setOpen(false);
   };
 
@@ -49,8 +51,8 @@ const MyCVsDialog: React.FC = () => {
     <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" size="sm" className="border-white/25 bg-white/5 text-white hover:text-white hover:bg-white/15 hover:border-white/40">
-            <FolderOpen className="w-4 h-4 md:mr-2" />
+          <Button variant="outline" size="sm" className="h-8 text-xs border-white/25 bg-white/5 text-white hover:text-white hover:bg-white/15 hover:border-white/40 px-2.5">
+            <FolderOpen className="w-3.5 h-3.5 md:mr-1.5" />
             <span className="hidden md:inline">My CVs</span>
           </Button>
         </DialogTrigger>
@@ -83,11 +85,11 @@ const MyCVsDialog: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-foreground truncate">{cv.name}</h3>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                        <span className="capitalize">{cv.template_id} template</span>
+                        <span className="capitalize">{cv.templateId} template</span>
                         <span>•</span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          {formatDistanceToNow(new Date(cv.updated_at), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(cv.updatedAt), { addSuffix: true })}
                         </span>
                       </div>
                     </div>
@@ -95,7 +97,7 @@ const MyCVsDialog: React.FC = () => {
                     <div className="flex items-center gap-2 ml-4">
                       <Button
                         size="sm"
-                        onClick={() => handleLoad(cv.cv_data, cv.template_id)}
+                        onClick={() => handleLoad(cv)}
                         className="bg-accent hover:bg-accent/90"
                       >
                         Load

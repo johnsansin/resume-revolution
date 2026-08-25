@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ScanSearch, CheckCircle2, XCircle, AlertCircle, Sparkles, FileSearch } from 'lucide-react';
+import { ScanSearch, CheckCircle2, XCircle, AlertCircle, Sparkles, FileSearch, ClipboardCheck, Copy, Target } from 'lucide-react';
 
 const gradeColor = (grade: string) => {
   switch (grade) {
@@ -25,7 +25,22 @@ const ATSCheck: React.FC = () => {
   const [result, setResult] = useState<ATSResult | null>(null);
 
   const runCheck = () => {
+    if (jobDescription.trim().length < 40) return;
     setResult(analyzeATS(cvData, jobDescription));
+  };
+
+  const copyReport = async () => {
+    if (!result) return;
+    const report = [
+      `CV Eligibility Report — ${result.eligibility}`,
+      `Job match: ${result.matchScore}%`,
+      `Resume readiness: ${result.score}/100 (${result.grade})`,
+      `Matched keywords: ${result.matchedKeywords.join(', ') || 'None'}`,
+      `Missing keywords: ${result.missingKeywords.join(', ') || 'None'}`,
+      'Recommendations:',
+      ...result.recommendations.map((item, index) => `${index + 1}. ${item}`),
+    ].join('\n');
+    await navigator.clipboard.writeText(report);
   };
 
   const R = 42;
@@ -47,25 +62,39 @@ const ATSCheck: React.FC = () => {
       <div className="space-y-2">
         <Label htmlFor="jd" className="flex items-center gap-2 text-foreground font-medium">
           <FileSearch className="w-4 h-4 text-accent" />
-          Job description (paste to check keyword match)
+          Job requirements
         </Label>
         <Textarea
           id="jd"
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
-          placeholder="Paste the job posting here to compare keywords against your CV..."
-          rows={6}
+          placeholder="Paste the complete job requirements or job posting here. Include responsibilities, required skills, qualifications, and preferred experience..."
+          rows={9}
           className="bg-card border-border focus:border-accent transition-colors resize-none"
         />
       </div>
 
-      <Button onClick={runCheck} className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-md">
-        <Sparkles className="w-4 h-4 mr-2" />
-        Run ATS Check
+      <Button disabled={jobDescription.trim().length < 40} onClick={runCheck} className="bg-slate-900 hover:bg-slate-800 text-white shadow-md">
+        <ClipboardCheck className="w-4 h-4 mr-2" />
+        Generate eligibility report
       </Button>
+      {jobDescription.trim().length > 0 && jobDescription.trim().length < 40 && <p className="text-xs text-amber-600">Paste at least 40 characters of job requirements for a useful comparison.</p>}
 
       {result && (
         <div className="space-y-6">
+          <div className="overflow-hidden rounded-2xl border border-cyan-300/30 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white shadow-xl">
+            <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-cyan-300 text-slate-950"><Target className="h-6 w-6" /></span>
+                <div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-cyan-300">Eligibility report</p><h4 className="mt-1 text-2xl font-black">{result.eligibility}</h4><p className="mt-1 text-xs text-slate-400">Based on CV content and pasted requirements</p></div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-center"><b className="text-2xl text-cyan-300">{result.matchScore}%</b><span className="block text-[9px] uppercase tracking-wider text-slate-400">job match</span></div>
+                <button onClick={copyReport} className="grid h-11 w-11 place-items-center rounded-xl border border-white/15 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white" title="Copy report"><Copy className="h-4 w-4" /></button>
+              </div>
+            </div>
+            <p className="border-t border-white/10 px-5 py-3 text-[10px] leading-4 text-slate-400">This report is decision support based on text matching and resume quality; the employer makes the final eligibility decision.</p>
+          </div>
           <div className="flex items-center gap-6 rounded-xl border border-border/60 bg-card p-5">
             <div className="relative h-28 w-28 shrink-0">
               <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
@@ -166,6 +195,17 @@ const ATSCheck: React.FC = () => {
               </div>
             </div>
           )}
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+              <h4 className="flex items-center gap-2 text-sm font-bold text-emerald-800"><CheckCircle2 className="h-4 w-4" />Your strengths</h4>
+              <ul className="mt-3 space-y-2">{result.strengths.map((item) => <li key={item} className="flex gap-2 text-xs text-emerald-900"><span>✓</span>{item}</li>)}</ul>
+            </section>
+            <section className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <h4 className="flex items-center gap-2 text-sm font-bold text-amber-800"><Sparkles className="h-4 w-4" />Priority improvements</h4>
+              <ol className="mt-3 space-y-2">{result.recommendations.map((item, index) => <li key={item} className="flex gap-2 text-xs leading-5 text-amber-900"><b>{index + 1}.</b>{item}</li>)}</ol>
+            </section>
+          </div>
         </div>
       )}
     </div>

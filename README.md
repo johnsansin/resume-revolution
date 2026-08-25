@@ -10,7 +10,7 @@ templates, live preview, and one-click PDF export.
 - AI-powered wording suggestions
 - Save, manage, and iterate on multiple resumes in the cloud
 - Export to high-quality PDF
-- Secure authentication via **Supabase** (email/password + password reset)
+- Secure authentication via the Express API (bcrypt + revocable JWT sessions)
 - Responsive: works on desktop, tablet, and mobile
 
 ## Tech stack
@@ -19,7 +19,7 @@ templates, live preview, and one-click PDF export.
 - **TanStack React Query** for data fetching
 - **React Hook Form** + **Zod** for type-safe forms and validation
 - **Tailwind CSS** (shadcn/ui components) for styling
-- **Supabase** for auth, database, storage, and (optional) edge functions
+- **Express** + **PostgreSQL** for authentication, data storage, and administration
 - **react-pdf** / **@react-pdf/renderer** for PDF generation
 - **React Router v6** for routing
 
@@ -43,12 +43,14 @@ npm run build
 
 ### Environment
 
-Copy `.env.example` (if provided) to `.env` and fill in your Supabase project values:
+Copy `.env.example` to `.env`. Copy the backend values into `server/.env`:
 
 ```
-VITE_SUPABASE_URL=https://<project>.supabase.co
-VITE_SUPABASE_ANON_KEY=<your-anon-key / publishable key>
-VITE_SUPABASE_PROJECT_ID=<project-id>
+VITE_API_URL=http://localhost:3001/api
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cv_maker
+JWT_SECRET=<at-least-32-random-characters>
+JWT_EXPIRES_IN=7d
+CORS_ORIGINS=http://localhost:8080
 ```
 
 ## Project Structure
@@ -59,17 +61,23 @@ src/
   pages/           # Landing, Auth, Dashboard, admin pages, 404
   components/      # UI blocks: cv forms, builder, sidebar, admin
   contexts/        # AuthContext + CVContext (state)
-  integrations/supabase/  # client, types
+  integrations/api/  # typed API client
   hooks/           # shared React hooks
   lib/             # helpers
 public/            # static assets (favicon, logo, manifest, sw)
 ```
 
-## Supabase setup
+## Backend and database setup
 
-The project uses the Supabase JS client. Make sure your Supabase project has the expected
-schema (tables like `profiles`, CV-related rows, etc.) and that Auth is configured with email
-confirmations / password recovery as needed.
+```bash
+cd server
+npm ci
+npm run db:setup
+npm run dev
+```
+
+The setup command applies additive, idempotent schema changes. Password-reset delivery must
+be connected to an email provider in production; raw reset tokens are never logged.
 
 ## Deploying
 
@@ -79,7 +87,7 @@ confirmations / password recovery as needed.
    ```
 2. Serve the static `dist/` from any static host (Vercel, Netlify, Cloudflare Pages, S3, nginx, etc.)
 3. Configure your domain's DNS and HTTPS.
-4. Ensure `VITE_SUPABASE_*` env vars point to your production Supabase project when building.
+4. Proxy `/api` to the backend and configure the production environment values above.
 
 ## License
 

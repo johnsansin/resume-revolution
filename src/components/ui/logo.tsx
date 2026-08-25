@@ -28,7 +28,7 @@ export const LogoFull: React.FC<{ className?: string }> = ({ className }) => {
   return (
     <div className={`flex items-center gap-2.5 ${className || ''}`}>
       <Logo size={22} />
-      <span className="font-display text-xl font-extrabold text-foreground">CV Maker</span>
+      <span className="font-display text-xl font-extrabold text-foreground">CV Builder</span>
     </div>
   );
 };

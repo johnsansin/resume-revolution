@@ -1,25 +1,25 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
-import { usePresence } from '@/hooks/usePresence';
-import { getGeoInfo } from '@/lib/geo';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { api, ApiUser } from '@/integrations/api/client';
+import type { PersonalInfo } from '@/types/cv';
 
 interface Profile {
   id: string;
-  email: string | null;
-  display_name: string | null;
-  avatar_url: string | null;
+  email: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  phone: string;
+  profileData: Partial<PersonalInfo>;
+  isActive: boolean;
+  roles: string[];
 }
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
-  profile: Profile | null;
+  user: Profile | null;
   loading: boolean;
   signUp: (email: string, password: string, displayName?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signOut: () => Promise<void>;
-  updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
+  signOut: () => void;
+  updateProfile: (updates: { displayName?: string; avatarUrl?: string; phone?: string; profileData?: Partial<PersonalInfo> }) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,160 +33,137 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [user, setUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  usePresence(user?.id);
-
-  const logLogin = async (u: User) => {
+  const fetchProfile = useCallback(async () => {
     try {
-      const geo = await getGeoInfo();
-      await supabase.from('login_history').insert({
-        user_id: u.id,
-        email: u.email,
-        ip_address: geo?.ip,
-        country: geo?.country,
-        country_code: geo?.country_code,
-        city: geo?.city,
-        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 300) : null,
-      });
-    } catch {
-      // never block login on logging failure
-    }
-  };
-
-  const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    
-    if (!error && data) {
-      if ((data as any).is_active === false) {
-        // Account deactivated by superadmin — sign out immediately
-        await supabase.auth.signOut();
-        setProfile(null);
+      const data = await api.get<ApiUser & { roles: string[] }>('/auth/me');
+      if (!data.isActive) {
+        api.setToken(null);
+        setUser(null);
         return;
       }
-      setProfile(data);
+      setUser({
+        id: data.id,
+        email: data.email,
+        displayName: data.displayName,
+        avatarUrl: data.avatarUrl,
+        phone: data.phone || '',
+        profileData: data.profileData || {},
+        isActive: data.isActive,
+        roles: data.roles || [],
+      });
+    } catch {
+      api.setToken(null);
+      setUser(null);
     }
-  };
-
-  useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Defer profile fetch with setTimeout to avoid deadlock
-        if (session?.user) {
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
-        }
-        
-        setLoading(false);
-      }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      }
-      
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const init = async () => {
+      const token = api.getToken();
+      if (token) {
+        await fetchProfile();
+      }
+      setLoading(false);
+    };
+    init();
+  }, [fetchProfile]);
+
+  useEffect(() => {
+    const expireSession = () => setUser(null);
+    window.addEventListener('auth:expired', expireSession);
+    return () => window.removeEventListener('auth:expired', expireSession);
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const ping = () => { if (document.visibilityState === 'visible') api.put('/presence', {}).catch(() => undefined); };
+    ping();
+    const timer = window.setInterval(ping, 45000);
+    window.addEventListener('focus', ping);
+    document.addEventListener('visibilitychange', ping);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', ping);
+      document.removeEventListener('visibilitychange', ping);
+    };
+  }, [user?.id]);
+
   const signUp = async (email: string, password: string, displayName?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          display_name: displayName || email.split('@')[0],
-        },
-      },
-    });
-    
-    return { error: error as Error | null };
+    try {
+      const data = await api.post<{ user: ApiUser; token: string }>('/auth/register', {
+        email,
+        password,
+        displayName,
+      });
+      api.setToken(data.token);
+      const u = data.user;
+      setUser({
+        id: u.id,
+        email: u.email,
+        displayName: u.displayName,
+        avatarUrl: u.avatarUrl,
+        phone: u.phone || '',
+        profileData: u.profileData || {},
+        isActive: u.isActive,
+        roles: u.roles || ['user'],
+      });
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
+    }
   };
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) return { error: error as Error | null };
-
-    if (data.user) {
-      logLogin(data.user);
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-
-      if (profile && (profile as any).is_active === false) {
-        await supabase.auth.signOut();
-        return { error: new Error('This account has been deactivated. Contact the administrator.') };
-      }
+    try {
+      const data = await api.post<{ user: ApiUser; token: string }>('/auth/login', {
+        email,
+        password,
+      });
+      api.setToken(data.token);
+      const u = data.user;
+      setUser({
+        id: u.id,
+        email: u.email,
+        displayName: u.displayName,
+        avatarUrl: u.avatarUrl,
+        phone: u.phone || '',
+        profileData: u.profileData || {},
+        isActive: u.isActive,
+        roles: u.roles || [],
+      });
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
     }
-
-    return { error: null };
   };
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  const signOut = () => {
+    api.setToken(null);
     setUser(null);
-    setSession(null);
-    setProfile(null);
   };
 
-  const updateProfile = async (updates: Partial<Profile>) => {
-    if (!user) return { error: new Error('No user logged in') };
-    
-    const { error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', user.id);
-    
-    if (!error) {
-      setProfile(prev => prev ? { ...prev, ...updates } : null);
+  const updateProfile = async (updates: { displayName?: string; avatarUrl?: string; phone?: string; profileData?: Partial<PersonalInfo> }) => {
+    try {
+      const data = await api.put<ApiUser>('/auth/profile', updates);
+      setUser((prev) => prev ? {
+        ...prev,
+        displayName: data.displayName,
+        avatarUrl: data.avatarUrl,
+        phone: data.phone || '',
+        profileData: data.profileData || {},
+      } : null);
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
     }
-    
-    return { error: error as Error | null };
   };
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        session,
-        profile,
-        loading,
-        signUp,
-        signIn,
-        signOut,
-        updateProfile,
-      }}
+      value={{ user, loading, signUp, signIn, signOut, updateProfile }}
     >
       {children}
     </AuthContext.Provider>

@@ -14,9 +14,9 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { User, LogOut, LogIn, Shield } from 'lucide-react';
 
-const UserMenu: React.FC = () => {
+const UserMenu: React.FC<{ onAccount?: () => void }> = ({ onAccount }) => {
   const navigate = useNavigate();
-  const { user, profile, signOut, loading } = useAuth();
+  const { user, signOut, loading } = useAuth();
   const { isAdmin } = useUserRole();
 
   if (loading) {
@@ -34,8 +34,8 @@ const UserMenu: React.FC = () => {
     );
   }
 
-  const initials = profile?.display_name
-    ? profile.display_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  const initials = user.displayName
+    ? user.displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : user.email?.slice(0, 2).toUpperCase() || 'U';
 
   return (
@@ -53,7 +53,7 @@ const UserMenu: React.FC = () => {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">
-              {profile?.display_name || 'User'}
+              {user.displayName || 'User'}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
               {user.email}
@@ -61,7 +61,7 @@ const UserMenu: React.FC = () => {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/settings')}>
+        <DropdownMenuItem className="cursor-pointer" onClick={() => onAccount ? onAccount() : navigate('/settings')}>
           <User className="mr-2 h-4 w-4" />
           <span>My Account</span>
         </DropdownMenuItem>
