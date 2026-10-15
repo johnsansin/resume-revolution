@@ -26,6 +26,9 @@ export const setupDatabase = async (): Promise<void> => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_data JSONB NOT NULL DEFAULT '{}'::jsonb;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
+      CREATE INDEX IF NOT EXISTS idx_users_last_seen_at ON users (last_seen_at DESC);
 
       CREATE TABLE IF NOT EXISTS user_roles (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -56,6 +59,10 @@ export const setupDatabase = async (): Promise<void> => {
         ALTER TABLE saved_cvs ADD COLUMN deleted_by UUID REFERENCES users(id);
       EXCEPTION WHEN duplicate_column THEN null;
       END $$;
+
+      ALTER TABLE saved_cvs ADD COLUMN IF NOT EXISTS share_token TEXT;
+      ALTER TABLE saved_cvs ADD COLUMN IF NOT EXISTS shared_at TIMESTAMPTZ;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_saved_cvs_share_token ON saved_cvs (share_token) WHERE share_token IS NOT NULL;
 
       CREATE TABLE IF NOT EXISTS login_history (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
